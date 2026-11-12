@@ -10,6 +10,7 @@ export type LiveBroadcast = {
   ownerNickname: string;
   title: string;
   sourceType: SourceType;
+  withCamera: boolean;
   status: BroadcastStatus;
   createdAt: Date;
   startedAt: Date | null;
@@ -25,6 +26,7 @@ function fromDoc(id: string, d: DocumentData): LiveBroadcast {
     ownerNickname: d.ownerNickname,
     title: d.title,
     sourceType: d.sourceType,
+    withCamera: d.withCamera ?? false,
     status: d.status,
     createdAt: toDate(d.createdAt) ?? new Date(),
     startedAt: toDate(d.startedAt),

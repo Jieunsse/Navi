@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/entities/session/session";
 import { apiFetch } from "@/shared/api/apiFetch";
 import { formatTime } from "@/shared/lib/format";
+import { Banner, Button, buttonCls } from "@/shared/ui";
 
 function text(s: SanctionItem) {
   const until = s.endAt ? `${formatTime(s.endAt)}까지 ` : "";
@@ -30,27 +31,32 @@ export function SanctionBanner() {
   if (!shown.length) return null;
   const hasWarning = shown.some((s) => s.kind === "warning");
   return (
-    <div role="status" className="flex flex-col gap-1 border-b border-danger/50 bg-danger/10 px-4 py-2 text-sm">
-      {shown.map((s) => (
-        <p key={s.id}>
-          <b>{SANCTION_LABEL[s.kind]}</b> · {text(s)}
-        </p>
-      ))}
-      <div className="flex gap-3 text-xs">
-        <Link href="/me/sanctions" className="underline">
-          자세히 보기
-        </Link>
-        {hasWarning && (
-          <button
-            onClick={() => {
-              void apiFetch(moderationApi.ackWarnings).then(() => setItems((a) => a.filter((s) => s.kind !== "warning")));
-            }}
-            className="underline"
-          >
-            확인했어요
-          </button>
-        )}
-      </div>
+    <div role="status" className="px-4 pt-4 md:px-8">
+      <Banner tone="danger">
+        <div className="flex flex-col gap-2">
+          {shown.map((s) => (
+            <p key={s.id}>
+              <b>{SANCTION_LABEL[s.kind]}</b> · {text(s)}
+            </p>
+          ))}
+          <div className="flex gap-2">
+            <Link href="/me/sanctions" className={buttonCls({ variant: "secondary", size: "sm" })}>
+              자세히 보기
+            </Link>
+            {hasWarning && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  void apiFetch(moderationApi.ackWarnings).then(() => setItems((a) => a.filter((s) => s.kind !== "warning")));
+                }}
+              >
+                확인했어요
+              </Button>
+            )}
+          </div>
+        </div>
+      </Banner>
     </div>
   );
 }

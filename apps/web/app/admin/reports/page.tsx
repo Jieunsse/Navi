@@ -22,28 +22,28 @@ function AdminReportsPageBody() {
   }, [loadGroups]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-bold">신고 처리</h1>
+    <div className="flex flex-col gap-8">
+      <h1 className="text-heading-28">신고 처리</h1>
       <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6">
         <div className="flex flex-col gap-2">
-          {groups?.length === 0 && <p className="text-sm text-muted">신고가 없어요</p>}
+          {groups?.length === 0 && <p className="text-body-16 text-muted">신고가 없어요</p>}
           {groups?.map((g) => (
             <button
               key={g.userId}
               onClick={() => setSelected(g.userId)}
-              className={cx("flex flex-col gap-0.5 rounded-lg border px-3 py-2 text-left text-sm", selected === g.userId ? "border-accent" : "border-line hover:bg-surface-2")}
+              className={cx("flex flex-col gap-0.5 rounded-lg px-4 py-3 text-left text-body-16", selected === g.userId ? "bg-raised" : "bg-surface hover:bg-hover")}
             >
               <span className="flex justify-between">
                 <b>{g.nickname}</b>
-                <span className={g.status === "pending" ? "text-accent" : "text-muted"}>{g.status === "pending" ? "처리 전" : "처리됨"}</span>
+                <span className={g.status === "pending" ? "text-text" : "text-subtle"}>{g.status === "pending" ? "처리 전" : "처리됨"}</span>
               </span>
-              <span className="text-xs text-muted">
+              <span className="text-caption-12 text-subtle">
                 신고 {g.count}건 · {REPORT_REASONS[g.latestReason]} · {formatTime(g.firstAt)}부터
               </span>
             </button>
           ))}
         </div>
-        {selected ? <ReportDetail key={selected} userId={selected} onChanged={loadGroups} /> : <p className="text-sm text-muted">왼쪽에서 대상을 골라 주세요</p>}
+        {selected ? <ReportDetail key={selected} userId={selected} onChanged={loadGroups} /> : <p className="text-body-16 text-muted">왼쪽에서 대상을 골라 주세요</p>}
       </div>
     </div>
   );
@@ -59,8 +59,8 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
   }, [load]);
   const refusal = useSanctionGuard(d?.user ?? { uid: "", nickname: "", email: null, grade: "", seedKind: null, isAdmin: false, masked: false, suspended: false, chatBannedUntil: null, broadcastBannedUntil: null });
 
-  if (error) return <p className="text-sm text-danger">{error}</p>;
-  if (!d) return <p className="text-sm text-muted">불러오는 중…</p>;
+  if (error) return <p className="text-body-16 text-danger">{error}</p>;
+  if (!d) return <p className="text-body-16 text-muted">불러오는 중…</p>;
 
   const done = () => {
     void load();
@@ -79,25 +79,25 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
   const pending = d.reports.some((r) => r.status === "pending");
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-line bg-surface p-4">
-        <p className="font-bold">
-          {d.user.nickname} <span className="text-xs font-normal text-muted">{d.user.grade}</span>
+    <div className="flex flex-col gap-8">
+      <div className="rounded-lg bg-surface p-4">
+        <p className="text-heading-16">
+          {d.user.nickname} <span className="text-caption-12 text-subtle">{d.user.grade}</span>
         </p>
-        <p className="text-xs text-muted">받은 신고 {d.reports.length}건 · 지난 제재 {d.sanctions.length}건</p>
+        <p className="text-caption-12 text-subtle">받은 신고 {d.reports.length}건 · 지난 제재 {d.sanctions.length}건</p>
       </div>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-bold">신고 목록</h2>
+        <h2 className="text-heading-16">신고 목록</h2>
         {d.reports.map((r) => (
-          <div key={r.id} className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2 text-sm">
+          <div key={r.id} className="flex flex-col gap-1 rounded-lg bg-surface p-4 text-body-16">
             <p className="break-words">{r.targetLabel}</p>
-            <p className="text-xs text-muted">
+            <p className="text-caption-12 text-subtle">
               {REPORT_REASONS[r.reason]}
               {r.detail && ` · ${r.detail}`} · 신고자 {r.reporterNickname} · {formatTime(r.createdAt)} · {REPORT_STATUS_LABEL[r.status]}
             </p>
             {pending && r.canHide && (
-              <button onClick={() => resolve({ action: "hide", reportId: r.id })} disabled={!reason.trim()} className="w-fit text-xs text-accent underline disabled:opacity-40">
+              <button onClick={() => resolve({ action: "hide", reportId: r.id })} disabled={!reason.trim()} className="w-fit text-caption-12 text-text underline disabled:opacity-40">
                 {r.targetType === "chat" ? "이 채팅만 숨기기" : "이 방송 강제 종료"}
               </button>
             )}
@@ -107,10 +107,10 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
 
       {pending && (
         <section className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 rounded-xl border border-line p-4">
-            <h3 className="text-sm font-bold">콘텐츠 숨기기 · 기각</h3>
+          <div className="flex flex-col gap-2 rounded-lg bg-surface p-4">
+            <h3 className="text-heading-16">콘텐츠 숨기기 · 기각</h3>
             <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="사유 (필수)" aria-label="처리 사유" />
-            <p className="text-xs text-muted">사유를 적으면 위 신고의 “숨기기” 링크와 아래 “기각”을 쓸 수 있어요.</p>
+            <p className="text-caption-12 text-subtle">사유를 적으면 위 신고의 “숨기기” 링크와 아래 “기각”을 쓸 수 있어요.</p>
             <Button variant="secondary" disabled={!reason.trim()} onClick={() => resolve({ action: "dismiss" })}>
               기각
             </Button>
@@ -122,10 +122,10 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
           />
         </section>
       )}
-      {!pending && refusal && <p className="text-xs text-muted">{refusal}</p>}
+      {!pending && refusal && <p className="text-caption-12 text-subtle">{refusal}</p>}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-bold">지난 제재</h2>
+        <h2 className="text-heading-16">지난 제재</h2>
         <SanctionList items={d.sanctions} onDone={done} />
       </section>
     </div>

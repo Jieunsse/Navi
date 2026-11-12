@@ -10,7 +10,7 @@ import { Button, Input } from "@/shared/ui";
 export function SanctionList({ items, onDone }: { items: SanctionItem[]; onDone: () => void }) {
   const [open, setOpen] = useState<string | null>(null);
   const [reason, setReason] = useState("");
-  if (!items.length) return <p className="text-sm text-muted">제재 이력이 없어요</p>;
+  if (!items.length) return <p className="text-body-16 text-muted">제재 이력이 없어요</p>;
 
   async function revoke(id: string) {
     try {
@@ -27,13 +27,13 @@ export function SanctionList({ items, onDone }: { items: SanctionItem[]; onDone:
   return (
     <div className="flex flex-col gap-2">
       {items.map((s) => (
-        <div key={s.id} className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2 text-sm">
+        <div key={s.id} className="flex flex-col gap-1 rounded-lg bg-surface p-4 text-body-16">
           <span className="flex justify-between">
             <b>{SANCTION_LABEL[s.kind]}</b>
             <span className={s.status === "active" ? "text-danger" : "text-muted"}>{SANCTION_STATUS_LABEL[s.status]}</span>
           </span>
           <span className="text-muted">{s.reason}</span>
-          <span className="text-xs text-muted">
+          <span className="text-caption-12 text-subtle">
             {formatTime(s.startAt)}
             {s.endAt && ` ~ ${formatTime(s.endAt)}`}
             {s.revokeReason && ` · 해제 사유: ${s.revokeReason}`}
@@ -47,7 +47,7 @@ export function SanctionList({ items, onDone }: { items: SanctionItem[]; onDone:
                 </Button>
               </div>
             ) : (
-              <button onClick={() => setOpen(s.id)} className="w-fit text-xs text-accent underline">
+              <button onClick={() => setOpen(s.id)} className="w-fit text-caption-12 text-text underline">
                 해제하기
               </button>
             ))}

@@ -4,7 +4,7 @@ import { CHAT_BAN_LABEL, CHAT_BAN_MEMO_MAX, moderationApi, type ChatBan } from "
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
-import { Button, Input } from "@/shared/ui";
+import { Button, cx, Input } from "@/shared/ui";
 import { ReportForm, Sheet } from "./ReportSheet";
 
 type Props = { item: ChatItem; broadcastId: string; isOwner: boolean; onClose: () => void };
@@ -48,14 +48,17 @@ export function UserSheet({ item, broadcastId, isOwner, onClose }: Props) {
   }
 
   return (
-    <Sheet title={anonymous ? "익명 후원" : item.authorNickname} onClose={onClose}>
-      {!anonymous && item.authorGrade && <p className="-mt-3 text-xs text-muted">{item.authorGrade}</p>}
-      <div className="flex flex-col gap-1 text-sm">
-        <button onClick={() => setView("chat")} className="rounded-lg px-3 py-2.5 text-left hover:bg-surface-2">
+    <Sheet
+      title={anonymous ? "익명 후원" : item.authorNickname}
+      badge={!anonymous && item.authorGrade && item.authorGrade !== "알" ? <span className={cx("rounded-full bg-raised px-2 py-0.5 text-badge-12", item.authorGrade === "애벌레" ? "text-success" : "border border-strong text-text")}>{item.authorGrade}</span> : undefined}
+      onClose={onClose}
+    >
+      <div className="flex flex-col gap-1">
+        <button onClick={() => setView("chat")} className="flex h-10 items-center rounded-sm px-3 text-left text-body-16 hover:bg-hover">
           이 메시지 신고
         </button>
         {!anonymous && (
-          <button onClick={() => setView("user")} className="rounded-lg px-3 py-2.5 text-left hover:bg-surface-2">
+          <button onClick={() => setView("user")} className="flex h-10 items-center rounded-sm px-3 text-left text-body-16 hover:bg-hover">
             사용자 신고
           </button>
         )}
@@ -63,12 +66,12 @@ export function UserSheet({ item, broadcastId, isOwner, onClose }: Props) {
       {isOwner && !anonymous && (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {banned ? (
-            <Button variant="secondary" loading={busy} onClick={() => run(() => apiFetch(moderationApi.unbanChat, undefined, { userId: item.authorId! }), "채팅 금지를 풀었어요")}>
+            <Button variant="secondary" size="lg" loading={busy} onClick={() => run(() => apiFetch(moderationApi.unbanChat, undefined, { userId: item.authorId! }), "채팅 금지를 풀었어요")}>
               채팅 금지 해제
             </Button>
           ) : (
             <>
-              <div className="flex gap-1" role="radiogroup" aria-label="기간">
+              <div className="flex gap-2" role="radiogroup" aria-label="기간">
                 {(Object.keys(CHAT_BAN_LABEL) as Duration[]).map((d) => (
                   <button
                     key={d}
@@ -76,14 +79,14 @@ export function UserSheet({ item, broadcastId, isOwner, onClose }: Props) {
                     role="radio"
                     aria-checked={duration === d}
                     onClick={() => setDuration(d)}
-                    className={`h-9 flex-1 rounded-lg text-sm font-medium ${duration === d ? "bg-accent text-accent-ink" : "bg-surface-2 text-muted"}`}
+                    className={cx("h-8 flex-1 rounded-full text-caption-12", duration === d ? "bg-accent text-accent-ink" : "border border-line bg-raised text-muted hover:bg-hover")}
                   >
                     {CHAT_BAN_LABEL[d]}
                   </button>
                 ))}
               </div>
               <Input value={memo} maxLength={CHAT_BAN_MEMO_MAX} onChange={(e) => setMemo(e.target.value)} placeholder="메모 (선택)" aria-label="메모" />
-              <Button variant="danger" loading={busy} onClick={() => run(() => apiFetch(moderationApi.banChat, { userId: item.authorId!, duration, memo }), "이 방송에서 채팅을 막았어요")}>
+              <Button variant="danger" size="lg" loading={busy} onClick={() => run(() => apiFetch(moderationApi.banChat, { userId: item.authorId!, duration, memo }), "이 방송에서 채팅을 막았어요")}>
                 이 방송에서 채팅 금지
               </Button>
             </>

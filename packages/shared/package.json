@@ -9,10 +9,12 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types src/*.test.ts"
+    "test": "node --test --experimental-strip-types src/*.test.ts",
+    "openapi": "node --experimental-strip-types scripts/openapi.ts"
   },
   "dependencies": {
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zod-openapi": "^6.0.2"
   },
   "devDependencies": {
     "typescript": "^5"

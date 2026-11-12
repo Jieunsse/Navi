@@ -3,6 +3,7 @@ import { recordingApi } from "@nabi/shared/recording.ts";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/shared/api/apiFetch";
+import { buttonCls, PlayIcon } from "@/shared/ui";
 
 /** 종료된 방송 화면의 "다시보기" 버튼. 공개한 녹화가 있을 때만 보인다(4-9). */
 export function ReplayButton({ broadcastId }: { broadcastId: string }) {
@@ -14,7 +15,8 @@ export function ReplayButton({ broadcastId }: { broadcastId: string }) {
   }, [broadcastId]);
   if (!recordingId) return null;
   return (
-    <Link href={`/replays/${recordingId}`} className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink">
+    <Link href={`/replays/${recordingId}`} className={buttonCls({ size: "lg" })}>
+      <PlayIcon size={20} />
       다시보기
     </Link>
   );

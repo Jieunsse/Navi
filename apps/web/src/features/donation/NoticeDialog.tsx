@@ -1,11 +1,17 @@
 "use client";
 import { Button } from "@/shared/ui";
 
-// 07 13장 후원 안내 문구. 미션 후원은 이번에 만들지 않아서 채팅 후원에 해당하는 줄만 싣는다.
+// 07 13장 후원 안내 문구
 const donationNotice = [
-  "후원 메시지에 다른 사람의 권리를 침해하거나 법령, 나비 이용약관, 나비 운영정책을 어기는 내용이 있으면 그 내용의 일부나 전부를 숨길 수 있어요. 이런 후원을 한 사용자는 나비 이용이 제한될 수 있어요.",
+  "후원 메시지와 미션 내용에 다른 사람의 권리를 침해하거나 법령, 나비 이용약관, 나비 운영정책을 어기는 내용이 있으면 그 내용의 일부나 전부를 숨길 수 있어요. 이런 후원을 한 사용자는 나비 이용이 제한될 수 있어요.",
   "위와 같은 후원으로 생긴 불이익과 법적 책임은 후원한 사용자에게 있어요.",
-  "채팅 후원과 전달된 후원은 취소할 수 없어요.",
+  "익명으로 후원해도 나비는 후원한 계정을 기록해요. 법령이나 운영정책을 어긴 후원은 익명이어도 이용 제한 대상이에요.",
+  "미션 후원은 방송자를 응원하는 후원이에요. 무언가를 사는 값이 아니에요. 방송자는 미션을 꼭 해야 하는 것이 아니고 거절할 수 있어요.",
+  "위험한 행동, 불법 행위, 선정적인 행동, 다른 사람을 괴롭히는 행동을 요구하는 미션은 보낼 수 없어요. 이런 미션을 보내면 나비 이용이 제한될 수 있어요.",
+  "미션 후원은 방송자가 수락한 때부터 정한 제한 시간 안에 \"성공\"을 누르면 상금 전부가 전달돼요.",
+  "방송자가 \"실패\"를 누르거나, 제한 시간이 지나거나, 진행 중에 방송이 끝나면 상금의 20%인 응원금만 전달되고 나머지는 돌려드려요. 응원금에서 100꿀 아래는 버려요.",
+  "방송자가 거절하거나, 수락하기 전에 방송이 끝나면 상금을 모두 돌려드려요.",
+  "채팅 후원과 전달된 상금·응원금은 취소할 수 없어요.",
 ];
 
 const chargeNotice = [
@@ -20,9 +26,10 @@ const chargeNotice = [
   "충전하고 7일 안에, 그 충전 건의 꿀을 하나도 쓰지 않았다면 내 정보 > 내 꿀에서 직접 충전을 취소할 수 있어요.",
   "후원에 쓴 꿀은 돌려받을 수 없어요. 일부라도 쓴 충전 건은 충전 취소를 할 수 없어요.",
   "충전 취소를 할 수 없는 꿀도, 쓰지 않았다면 내 정보 > 내 꿀에서 환급을 신청할 수 있어요. 결제 금액의 10%를 수수료로 빼고 본인 명의 계좌로 보내 드려요. 예를 들어 3,000꿀이면 2,970원이에요.",
-  "환급은 7일 안에 취소할 수 있는 충전 건의 꿀을 뺀 남은 꿀 전부를 한 번에 신청해요. 1,000꿀 미만이면 신청할 수 없어요.",
+  "환급은 7일 안에 취소할 수 있는 충전 건의 꿀을 뺀 남은 꿀 전부를 한 번에 신청해요. 1,000꿀 미만이면 신청할 수 없어요. 미션에 묶인 꿀은 환급할 수 없어요.",
   "환급을 신청하면 그 꿀은 후원에 쓸 수 없어요. 나비가 확인한 뒤 보내 드리고, 결과는 알림으로 알려 드려요.",
   "계좌이체처럼 현금으로 결제하면 충전할 때 현금영수증을 발급해요. 충전을 취소하면 현금영수증도 취소돼요.",
+  "미션에 묶여 \"대기 중\"인 꿀이 들어 있는 충전 건은 취소할 수 없어요. 미션이 거절되거나 취소되어 꿀이 모두 돌아오면 다시 취소할 수 있어요(충전 후 7일 안). 실패해서 응원금이 나간 충전 건은 취소할 수 없어요.",
   "충전 내역과 사용 내역은 내 정보 > 내 꿀에서 볼 수 있어요.",
   "이용 목적 없이 충전과 취소를 되풀이하는 등 서비스 운영을 어렵게 하면 이용이 제한될 수 있어요.",
   "회원 탈퇴 전에 남은 꿀을 확인해 주세요. 환급을 신청하지 않고 탈퇴하면 남은 꿀은 사라지고 되살릴 수 없어요. 환급을 처리하는 중에는 탈퇴할 수 없어요.",
@@ -32,13 +39,13 @@ const chargeNotice = [
 /** "안내 보기"를 누르면 열리는 후원·꿀 충전 안내 창(07 13장) */
 export function NoticeDialog({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4" onClick={(e) => { e.stopPropagation(); onClose(); }} role="dialog" aria-modal aria-label="후원 안내">
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-xl border border-line bg-surface p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-base font-bold">후원 안내</h2>
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted">{donationNotice.map((t) => <li key={t}>{t}</li>)}</ul>
-        <h2 className="mt-2 text-base font-bold">꿀 충전 안내</h2>
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted">{chargeNotice.map((t) => <li key={t}>{t}</li>)}</ul>
-        <Button onClick={onClose} className="mt-2">확인</Button>
+    <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center bg-scrim p-4" onClick={(e) => { e.stopPropagation(); onClose(); }} role="dialog" aria-modal aria-label="후원 안내">
+      <div className="flex max-h-[80dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-lg bg-raised p-6 shadow-overlay" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-heading-20">후원 안내</h2>
+        <ul className="list-disc space-y-2 pl-5 text-body-16 text-muted">{donationNotice.map((t) => <li key={t}>{t}</li>)}</ul>
+        <h2 className="mt-2 text-heading-20">꿀 충전 안내</h2>
+        <ul className="list-disc space-y-2 pl-5 text-body-16 text-muted">{chargeNotice.map((t) => <li key={t}>{t}</li>)}</ul>
+        <Button size="lg" onClick={onClose} className="mt-2">확인</Button>
       </div>
     </div>
   );

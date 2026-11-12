@@ -8,12 +8,14 @@ import { toast } from "sonner";
 import { useBroadcastDoc } from "@/entities/broadcast/model";
 import { ChatPanel } from "@/features/chat/ChatPanel";
 import { useRequireLogin } from "@/entities/session/session";
+import { MissionList } from "@/features/donation/MissionList";
 import { AudioMeter } from "@/features/studio/AudioMeter";
 import { RecordSwitch } from "@/features/studio/RecordSwitch";
+import { Stepper } from "@/features/studio/Stepper";
 import { useRecordingState } from "@/features/studio/useRecordingState";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
 import { formatElapsed } from "@/shared/lib/format";
-import { Button, Center, Input, Notice } from "@/shared/ui";
+import { Button, buttonCls, CircleAlertIcon, CircleCheckIcon, cx, CopyIcon, Dialog, EmptyState, IconButton, Input, LinkIcon, Notice, MicIcon, MicOffIcon, PencilIcon, RadioIcon, Spinner, StatusBadge, SwitchCameraIcon, VideoIcon } from "@/shared/ui";
 
 type Phase = "setup" | "starting" | "live" | "ended";
 type Quality = "good" | "unstable" | "reconnecting";
@@ -31,36 +33,41 @@ export default function StudioBroadcastPage({ params }: { params: Promise<{ id: 
   if (b && firstStatus === null) setFirstStatus(b.status);
 
   if (!me || b === undefined) return null;
-  if (b === null) return <Center><p className="text-muted">방송을 찾을 수 없어요</p></Center>;
-  if (b.ownerId !== me.uid) return <Center><p className="text-muted">이 방송의 송출 화면은 방송자만 열 수 있어요</p></Center>;
+  if (b === null) return <EmptyState title="방송을 찾을 수 없어요" action={<Link href="/studio" className={buttonCls({ variant: "secondary" })}>내 방송 관리</Link>} />;
+  if (b.ownerId !== me.uid) return <EmptyState title="이 방송의 송출 화면은 방송자만 열 수 있어요" action={<Link href="/" className={buttonCls({ variant: "secondary" })}>홈으로</Link>} />;
   if (firstStatus === "live")
     return (
-      <Center>
-        <p className="font-semibold">이미 방송 중인 방송이에요</p>
-        <p className="text-sm text-muted">송출 화면에는 다시 들어갈 수 없어요. 방송을 켠 탭에서 이어서 해 주세요.</p>
-        <Link href={`/live/${id}`} className="text-sm text-accent underline">시청자 화면으로 보기</Link>
-      </Center>
+      <EmptyState
+        title="이미 방송 중인 방송이에요"
+        description="송출 화면에는 다시 들어갈 수 없어요. 방송을 켠 탭에서 이어서 해 주세요."
+        action={<Link href={`/live/${id}`} className={buttonCls({ variant: "secondary" })}>시청자 화면으로 보기</Link>}
+      />
     );
   if (firstStatus === "ended") return <Ended id={id} />;
-  return <Publisher id={id} ownerId={b.ownerId} title={b.title} sourceType={b.sourceType} status={b.status} startedAt={b.startedAt} isTestBroadcaster={me.uid === TEST_ACCOUNTS.broadcaster} />;
+  return <Publisher id={id} ownerId={b.ownerId} title={b.title} sourceType={b.sourceType} withCamera={b.withCamera} status={b.status} startedAt={b.startedAt} donationTotal={b.donationTotal} isTestBroadcaster={me.uid === TEST_ACCOUNTS.broadcaster} />;
 }
 
 function Ended({ id, recording }: { id: string; recording?: boolean }) {
   return (
-    <Center>
-      <p className="text-lg font-semibold">방송이 끝났어요. 시청자에게도 끝났다고 보여요</p>
-      {recording && <p className="text-sm text-muted">다시보기를 만드는 중이에요. 다 되면 내 방송 관리에서 공개할 수 있어요</p>}
-      <div className="flex gap-2">
-        <Link href="/studio" className="inline-flex h-10 items-center rounded-lg bg-surface-2 px-4 text-sm font-semibold">내 방송 관리</Link>
-        <Link href="/studio/new" className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink">새 방송 만들기</Link>
-      </div>
-      <Link href={`/live/${id}`} className="text-xs text-muted underline">방송 화면 보기</Link>
-    </Center>
+    <EmptyState
+      title="방송이 끝났어요"
+      description={recording ? "다시보기를 만드는 중이에요. 다 되면 내 방송 관리에서 공개할 수 있어요" : "시청자에게도 끝났다고 보여요"}
+      action={
+        <div className="flex flex-col items-center gap-3">
+          {recording && <Spinner />}
+          <div className="flex gap-2">
+            <Link href="/studio" className={buttonCls({ variant: "secondary" })}>내 방송 관리</Link>
+            <Link href="/studio/new" className={buttonCls()}>새 방송 만들기</Link>
+          </div>
+          <Link href={`/live/${id}`} className="text-caption-12 text-muted underline">방송 화면 보기</Link>
+        </div>
+      }
+    />
   );
 }
 
-function Publisher(props: { id: string; ownerId: string; title: string; sourceType: "screen" | "camera"; status: string; startedAt: Date | null; isTestBroadcaster: boolean }) {
-  const { id, ownerId, sourceType, status, startedAt, isTestBroadcaster } = props;
+function Publisher(props: { id: string; ownerId: string; title: string; sourceType: "screen" | "camera"; withCamera: boolean; status: string; startedAt: Date | null; donationTotal: number; isTestBroadcaster: boolean }) {
+  const { id, ownerId, sourceType, withCamera, status, startedAt, isTestBroadcaster } = props;
   const isScreen = sourceType === "screen";
   const [phase, setPhase] = useState<Phase>("setup");
   const [video, setVideo] = useState<MediaStreamTrack | null>(null);
@@ -68,6 +75,9 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
   const [mic, setMic] = useState<MediaStreamTrack | null>(null);
   const [micDenied, setMicDenied] = useState(false);
   const [micMuted, setMicMuted] = useState(false);
+  const [cam, setCam] = useState<MediaStreamTrack | null>(null); // 화면과 함께 보내는 얼굴 카메라(결정 15)
+  const [camFailed, setCamFailed] = useState(false);
+  const [camOff, setCamOff] = useState(false);
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [mediaError, setMediaError] = useState("");
   const [startError, setStartError] = useState("");
@@ -76,6 +86,9 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
   const [now, setNow] = useState(() => Date.now());
   const [title, setTitle] = useState(props.title);
   const [asking, setAsking] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const [tab, setTab] = useState<"chat" | "mission">("chat");
   const [record, setRecord] = useState(false); // 방송 시작 전에만 고른다(4-4의 5번)
   const rec = useRecordingState(id);
   const [liveRoom, setLiveRoom] = useState<Room | null>(null);
@@ -83,19 +96,23 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
   const endingRef = useRef(false);
   const warnedRef = useRef(false);
   const preview = useRef<HTMLVideoElement>(null);
-  const tracks = useRef({ video, tabAudio, mic });
+  const camPreview = useRef<HTMLVideoElement>(null);
+  const tracks = useRef({ video, tabAudio, mic, cam });
   useEffect(() => {
-    tracks.current = { video, tabAudio, mic };
-  }, [video, tabAudio, mic]);
+    tracks.current = { video, tabAudio, mic, cam };
+  }, [video, tabAudio, mic, cam]);
   const linkOf = () => `${location.origin}/live/${id}`;
 
   useEffect(() => {
     if (preview.current) preview.current.srcObject = video ? new MediaStream([video]) : null;
   }, [video]);
+  useEffect(() => {
+    if (camPreview.current) camPreview.current.srcObject = cam ? new MediaStream([cam]) : null;
+  }, [cam]);
 
   useEffect(() => () => {
     const t = tracks.current;
-    stop(t.video, t.tabAudio, t.mic);
+    stop(t.video, t.tabAudio, t.mic, t.cam);
     void roomRef.current?.disconnect();
   }, []);
 
@@ -108,7 +125,7 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
     roomRef.current = null;
     setLiveRoom(null);
     const t = tracks.current;
-    stop(t.video, t.tabAudio, t.mic);
+    stop(t.video, t.tabAudio, t.mic, t.cam);
     setPhase("ended");
   }, [id]);
 
@@ -203,6 +220,18 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
     setVideo(s.getVideoTracks()[0] ?? null);
     setTabAudio(s.getAudioTracks()[0] ?? null);
     if (!mic) await requestMic();
+    if (withCamera && !cam) await requestCam();
+  }
+
+  /** 얼굴 카메라. 거부하거나 카메라가 없어도 화면만으로 방송을 시작할 수 있다(4-4). */
+  async function requestCam() {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 360 } } });
+      setCam(s.getVideoTracks()[0] ?? null);
+      setCamFailed(false);
+    } catch {
+      setCamFailed(true);
+    }
   }
 
   async function openCamera(face = facing) {
@@ -248,6 +277,7 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
       await lp.publishTrack(video, { source: isScreen ? Track.Source.ScreenShare : Track.Source.Camera, simulcast: true });
       if (tabAudio) await lp.publishTrack(tabAudio, { source: Track.Source.ScreenShareAudio });
       if (mic) await lp.publishTrack(mic, { source: Track.Source.Microphone });
+      if (cam) await lp.publishTrack(cam, { source: Track.Source.Camera, simulcast: true });
       const deadline = Date.now() + START_TIMEOUT_MS;
       while (Date.now() < deadline) {
         const { status } = await apiFetch(api.confirmLive, undefined, { id });
@@ -283,9 +313,18 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
     setMicMuted(!micMuted);
   }
 
+  async function toggleCam() {
+    const pub = roomRef.current?.localParticipant.getTrackPublication(Track.Source.Camera);
+    if (!pub?.track) return;
+    if (camOff) await pub.track.unmute();
+    else await pub.track.mute();
+    setCamOff(!camOff);
+  }
+
   async function saveTitle() {
     try {
       await apiFetch(api.updateBroadcast, { title: title.trim() }, { id });
+      setEditing(false);
       toast.success("제목을 바꿨어요");
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "잠시 뒤에 다시 시도해 주세요");
@@ -300,123 +339,246 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
   const qualityLabel = { good: "좋음", unstable: "불안정", reconnecting: "다시 연결 중" }[quality];
   const showUnstable = phase === "live" && quality !== "good" && unstableSince !== null && now - unstableSince > UNSTABLE_WARN_MS;
 
+  const live = phase === "live";
+  const step = !video ? 1 : phase === "starting" ? 3 : 2;
+  const checks: [boolean, string][] = [
+    [!!video, "화면이 보여요"],
+    ...(isScreen ? ([[!!tabAudio, "화면 소리가 들려요"]] as [boolean, string][]) : []),
+    [!micOff, "마이크 소리가 들려요"],
+  ];
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
-      {phase === "live" && micOff && <Notice tone="danger">마이크가 꺼져 있어요. 시청자에게 내 목소리가 들리지 않아요</Notice>}
-      {showUnstable && (
-        <Notice tone="warn">
-          {isScreen
-            ? "인터넷이 불안정해서 시청자 화면이 끊길 수 있어요. 다른 탭의 동영상이나 내려받기를 멈춰 보세요"
-            : "인터넷이 불안정해서 시청자 화면이 끊길 수 있어요. 와이파이가 잘 잡히는 곳으로 옮겨 보세요"}
-        </Notice>
-      )}
-      {phase === "live" && !isScreen && <Notice tone="warn">화면을 켜 둔 채로 두세요. 다른 앱으로 가면 방송이 끝나요</Notice>}
-      {phase === "live" && record && rec.failReason === "quota" && <Notice tone="warn">이번 달 녹화 시간을 다 썼어요. 방송은 계속돼요</Notice>}
-      {phase === "live" && record && rec.failReason === "error" && <Notice tone="warn">녹화를 시작하지 못했어요. 방송은 계속돼요</Notice>}
-
-      <div className="flex flex-wrap items-center gap-3">
-        {phase === "live" ? (
-          <>
-            <span className="rounded bg-live px-2 py-0.5 text-xs font-bold text-white">LIVE</span>
-            <span className="font-mono text-sm">{formatElapsed(elapsed)}</span>
-            <span className={`text-xs ${quality === "good" ? "text-muted" : "text-danger"}`}>연결 {qualityLabel}</span>
-            {rec.startedAt && <span className="text-xs text-muted">{now < rec.startedAt.getTime() + RECORDING_MAX_MS ? "● 녹화 중 (3분까지)" : "녹화가 끝났어요 (3분)"}</span>}
-          </>
-        ) : (
-          <span className="rounded bg-surface-2 px-2 py-0.5 text-xs font-bold text-muted">준비 중</span>
+    <div className="flex flex-1 flex-col gap-3 px-4 py-3 lg:h-[calc(100dvh-var(--size-header))] lg:flex-row lg:gap-0 lg:overflow-hidden lg:p-0">
+      <div className="max-lg:contents lg:flex lg:min-w-0 lg:flex-1 lg:flex-col lg:gap-4 lg:overflow-y-auto lg:p-6">
+        {!live && <Stepper current={step} />}
+        {live && micOff && <Notice tone="danger">마이크가 꺼져 있어요. 시청자에게 내 목소리가 들리지 않아요</Notice>}
+        {showUnstable && (
+          <Notice tone="warn">
+            {isScreen
+              ? "인터넷이 불안정해서 시청자 화면이 끊길 수 있어요. 다른 탭의 동영상이나 내려받기를 멈춰 보세요"
+              : "인터넷이 불안정해서 시청자 화면이 끊길 수 있어요. 와이파이가 잘 잡히는 곳으로 옮겨 보세요"}
+          </Notice>
         )}
-        <div className="ml-auto flex gap-2">
-          <Button variant="secondary" onClick={copyLink}>링크 복사</Button>
-          {phase === "live" && (
-            <Button variant="secondary" onClick={() => window.open(`/live/${id}`, "_blank")}>시청자 화면으로 보기</Button>
-          )}
-        </div>
-      </div>
+        {live && !isScreen && <Notice tone="warn">화면을 켜 둔 채로 두세요. 다른 앱으로 가면 방송이 끝나요</Notice>}
+        {live && record && rec.failReason === "quota" && <Notice tone="warn">이번 달 녹화 시간을 다 썼어요. 방송은 계속돼요</Notice>}
+        {live && record && rec.failReason === "error" && <Notice tone="warn">녹화를 시작하지 못했어요. 방송은 계속돼요</Notice>}
+        {micDenied && phase === "setup" && (
+          <Notice tone="warn">마이크를 쓸 수 없어요. 크롬 주소창 왼쪽 아이콘에서 마이크를 허용하면 목소리도 나가요. 마이크 없이도 방송은 시작할 수 있어요.</Notice>
+        )}
+        {isScreen && withCamera && camFailed && <Notice tone="warn">카메라를 켜지 못했어요. 화면만 송출돼요</Notice>}
+        {startError && <Notice tone="danger">{startError}</Notice>}
+        {live && rec.startedAt && (
+          <p className="text-caption-12 text-muted">{now < rec.startedAt.getTime() + RECORDING_MAX_MS ? "녹화 중 (3분까지)" : "녹화가 끝났어요 (3분)"}</p>
+        )}
 
-      <div className="flex gap-2">
-        <Input value={title} maxLength={TITLE_MAX} onChange={(e) => setTitle(e.target.value)} aria-label="방송 제목" />
-        {phase === "live" && <Button variant="secondary" className="shrink-0" onClick={saveTitle} disabled={!title.trim()}>제목 저장</Button>}
-      </div>
-
-      <div className={`relative grid aspect-video w-full place-items-center overflow-hidden rounded-xl bg-black ${video ? "" : "min-h-[22rem]"}`}>
-        <video ref={preview} autoPlay muted playsInline className={`size-full object-contain ${video ? "" : "hidden"} ${!isScreen && facing === "user" ? "-scale-x-100" : ""}`} />
-        {!video && (
-          <div className="flex max-w-md flex-col gap-4 p-6 text-left text-sm">
-            {isScreen ? (
+        {live && (
+          <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+            <StatusBadge status="live" />
+            {editing ? (
               <>
-                <p className="text-base font-semibold">화면 공유 전에 확인해 주세요</p>
-                <ol className="flex list-decimal flex-col gap-2 pl-5 text-muted">
-                  <li>공유 창에서 <b className="text-text">Chrome 탭</b>을 고르면 가장 쉬워요.</li>
-                  <li><b className="text-text">탭 오디오도 공유</b>가 켜져 있어야 소리가 나가요.</li>
-                  <li>창이나 전체 화면을 고르면 맥에서 화면 기록 권한과 크롬 재시작이 필요할 수 있어요.</li>
-                </ol>
-                <Button onClick={shareScreen}>화면 공유 시작</Button>
-              </>
-            ) : asking ? (
-              <>
-                <p className="text-base font-semibold">다음 창에서 허용을 눌러 주세요</p>
-                <p className="text-muted">카메라와 마이크 권한을 물어봐요.</p>
-                <Button onClick={() => openCamera()}>계속</Button>
+                <Input value={title} maxLength={TITLE_MAX} onChange={(e) => setTitle(e.target.value)} aria-label="방송 제목" className="h-10 min-w-0 flex-1" />
+                <Button size="sm" onClick={saveTitle} disabled={!title.trim()}>저장</Button>
               </>
             ) : (
               <>
-                <p className="text-base font-semibold">링크를 먼저 복사해 두세요</p>
-                <p className="text-muted">방송 중에 다른 앱으로 가면 방송이 끝나요. 메신저에 보낼 링크는 지금 복사해 두세요.</p>
-                <Button variant="secondary" onClick={copyLink}>링크 복사</Button>
-                <Button onClick={() => setAsking(true)}>카메라 켜기</Button>
+                <h1 className="min-w-0 truncate text-heading-16 lg:text-heading-20">{title}</h1>
+                <IconButton label="제목 수정" onClick={() => setEditing(true)} className="size-8">
+                  <PencilIcon size={16} />
+                </IconButton>
               </>
             )}
+            <span className="ml-auto flex items-center gap-2 lg:gap-3">
+              <span className={cx("text-number-16", quality !== "good" ? "text-danger" : "text-muted")} title={`연결 ${qualityLabel}`}>
+                {formatElapsed(elapsed)}
+              </span>
+              {quality !== "good" && <span className="text-caption-12 text-danger">연결 {qualityLabel}</span>}
+              <Button variant="secondary" size="sm" className="max-lg:hidden" onClick={() => window.open(`/live/${id}`, "_blank")}>
+                <LinkIcon size={16} />
+                시청자 화면으로 보기
+              </Button>
+              <Button variant="secondary" size="sm" className="max-lg:hidden" onClick={copyLink}>
+                <CopyIcon size={16} />
+                링크 복사
+              </Button>
+              <IconButton label="링크 복사" onClick={copyLink} className="size-8 border border-line bg-raised lg:hidden">
+                <CopyIcon size={16} />
+              </IconButton>
+            </span>
           </div>
         )}
-        {video && !isScreen && (
-          <button onClick={() => openCamera(facing === "user" ? "environment" : "user")} className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-2 text-xs" aria-label="앞뒤 카메라 바꾸기">
-            🔄 카메라 바꾸기
-          </button>
-        )}
-      </div>
 
-      {mediaError && <Notice tone="danger">{mediaError}</Notice>}
-      {video && isScreen && !tabAudio && (
-        <Notice tone="warn">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>탭 소리가 들어오지 않아요. 탭 오디오 공유를 켜고 다시 공유해 주세요</span>
-            {phase === "setup" && <Button variant="secondary" onClick={shareScreen}>다시 공유</Button>}
-          </div>
-        </Notice>
-      )}
-      {micDenied && phase === "setup" && (
-        <Notice tone="warn">마이크를 쓸 수 없어요. 크롬 주소창 왼쪽 아이콘에서 마이크를 허용하면 목소리도 나가요. 마이크 없이도 방송은 시작할 수 있어요.</Notice>
-      )}
-
-      {video && (
-        <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
-          {isScreen && <AudioMeter track={tabAudio} label="탭 소리" />}
-          <AudioMeter track={micOff ? null : mic} label="마이크" />
+        <div className="relative flex min-h-64 flex-1 flex-col items-center justify-center gap-4 overflow-hidden rounded-md bg-screen p-4 lg:min-h-0">
+          <video ref={preview} autoPlay muted playsInline className={cx("absolute inset-0 size-full object-contain", video ? "" : "hidden", !isScreen && facing === "user" && "-scale-x-100")} />
+          {!video &&
+            (isScreen && mediaError ? (
+              <div className="flex max-w-[560px] flex-col items-center gap-3 text-center">
+                <CircleAlertIcon size={24} className="text-subtle" />
+                <p className="text-heading-20">화면 공유가 시작되지 않았어요</p>
+                <p className="text-body-16 text-subtle">{mediaError}</p>
+                <Button size="lg" onClick={shareScreen}>다시 시도</Button>
+              </div>
+            ) : isScreen ? (
+              <div className="flex max-w-[560px] flex-col items-center gap-6">
+                <h2 className="text-heading-20">화면 공유 전에 확인해 주세요</h2>
+                <ol className="flex w-full flex-col gap-4 rounded-md bg-surface p-5">
+                  {[
+                    ["\"Chrome 탭\"을 고르면 가장 쉬워요", "유튜브나 문서처럼 한 탭만 보여줄 때 좋아요"],
+                    ["\"탭 오디오도 공유\"를 켜야 소리가 나가요", "꺼져 있으면 시청자에게 탭 소리가 들리지 않아요"],
+                    ["창이나 전체 화면은 준비가 더 필요할 수 있어요", "맥에서는 화면 기록 권한을 켜고 Chrome을 다시 시작해야 해요"],
+                  ].map(([t, d], i) => (
+                    <li key={t} className="flex items-start gap-3">
+                      <span aria-hidden className="grid size-7 shrink-0 place-items-center rounded-full bg-raised text-caption-12">{i + 1}</span>
+                      <div className="flex flex-col">
+                        <span className="text-body-16">{t}</span>
+                        <span className="text-body-16 text-muted">{d}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+                <Button size="lg" onClick={shareScreen}>화면 공유 시작</Button>
+              </div>
+            ) : asking ? (
+              <div className="flex max-w-[560px] flex-col items-center gap-3 text-center">
+                <VideoIcon size={24} className="text-subtle" />
+                <p className="text-heading-20">다음 창에서 허용을 눌러 주세요</p>
+                <p className="text-body-16 text-subtle">카메라와 마이크 권한을 물어봐요</p>
+                <Button size="lg" onClick={() => openCamera()}>계속</Button>
+              </div>
+            ) : (
+              <div className="flex w-full max-w-[560px] flex-col items-center gap-4 text-center">
+                <VideoIcon size={24} className="text-subtle" />
+                <p className="text-heading-20">링크를 먼저 복사해 두세요</p>
+                <p className="text-body-16 text-subtle">방송 중에 다른 앱으로 가면 방송이 끝나요</p>
+                <div className="flex w-full flex-col gap-2">
+                  <Button variant="secondary" size="lg" onClick={copyLink}>링크 복사</Button>
+                  <Button size="lg" onClick={() => setAsking(true)}>카메라 켜기</Button>
+                </div>
+              </div>
+            ))}
+          {video && isScreen && cam && (
+            <div className="absolute bottom-3 right-3 aspect-video w-1/5 min-w-24 overflow-hidden rounded-sm border border-line bg-screen">
+              <video ref={camPreview} autoPlay muted playsInline className={cx("size-full -scale-x-100 object-cover", camOff && "invisible")} />
+            </div>
+          )}
+          {video && !isScreen && !live && (
+            <IconButton label="앞뒤 카메라 바꾸기" onClick={() => openCamera(facing === "user" ? "environment" : "user")} className="absolute right-3 top-3 bg-overlay text-on-video">
+              <SwitchCameraIcon size={20} />
+            </IconButton>
+          )}
         </div>
-      )}
 
-      {startError && <Notice tone="danger">{startError}</Notice>}
+        {!live && video && (
+          <div className="flex flex-col gap-6 rounded-md bg-surface p-4 lg:flex-row lg:items-end">
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              {isScreen && <AudioMeter track={tabAudio} label="탭 소리" kind="tab" />}
+              <AudioMeter track={micOff ? null : mic} label="마이크" />
+              {checks.map(([ok, label]) => (
+                <div key={label} className="flex items-center gap-2 text-body-16">
+                  {ok ? <CircleCheckIcon size={20} className="shrink-0 text-success" /> : <CircleAlertIcon size={20} className="shrink-0 text-live-ink" />}
+                  {label}
+                </div>
+              ))}
+              {isScreen && !tabAudio && (
+                <Button variant="secondary" size="sm" className="self-start" onClick={shareScreen}>다시 공유</Button>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 lg:items-end">
+              <RecordSwitch checked={record} onChange={setRecord} disabled={phase === "starting"} />
+              <Button variant="live" size="lg" onClick={start} disabled={!video || phase === "starting"} loading={phase === "starting"} className="max-lg:w-full">
+                {phase === "starting" ? (
+                  "방송을 시작하는 중…"
+                ) : (
+                  <>
+                    <RadioIcon size={20} />
+                    방송 시작
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+        {status === "live" && !live && <p className="text-caption-12 text-subtle">방송 상태를 확인하는 중이에요…</p>}
 
-      {phase !== "live" && <RecordSwitch checked={record} onChange={setRecord} disabled={phase === "starting"} />}
-
-      <div className="flex flex-wrap gap-2">
-        {phase !== "live" ? (
-          <Button className="flex-1" onClick={start} disabled={!video || phase === "starting"} loading={phase === "starting"}>
-            {phase === "starting" ? "방송을 시작하는 중…" : "방송 시작"}
-          </Button>
-        ) : (
-          <>
-            <Button variant="secondary" onClick={toggleMic}>{micOff ? "마이크 켜기" : "마이크 끄기"}</Button>
-            <Button variant="danger" className="ml-auto" onClick={() => confirm("방송을 끝낼까요? 끝낸 방송은 다시 켤 수 없어요.") && void finish(true)}>
-              방송 종료
-            </Button>
-          </>
+        {live && (
+          <div className="flex items-center justify-between rounded-md border border-line bg-surface p-3 max-lg:order-2 max-lg:border-0 max-lg:bg-transparent max-lg:p-0">
+            <div className="flex items-center gap-2">
+              <IconButton label={micOff ? "마이크 켜기" : "마이크 끄기"} onClick={toggleMic} className="border border-line bg-raised max-lg:border-0 max-lg:bg-overlay">
+                {micOff ? <MicOffIcon size={20} /> : <MicIcon size={20} />}
+              </IconButton>
+              {cam && (
+                <IconButton label={camOff ? "카메라 켜기" : "카메라 끄기"} onClick={toggleCam} className="border border-line bg-raised">
+                  <VideoIcon size={20} />
+                </IconButton>
+              )}
+              {!isScreen && (
+                <IconButton label="앞뒤 카메라 바꾸기" onClick={() => openCamera(facing === "user" ? "environment" : "user")} className="border border-line bg-raised max-lg:border-0 max-lg:bg-overlay">
+                  <SwitchCameraIcon size={20} />
+                </IconButton>
+              )}
+            </div>
+            <Button variant="danger" onClick={() => setEnding(true)}>방송 종료</Button>
+          </div>
         )}
       </div>
-      {status === "live" && phase !== "live" && <p className="text-xs text-muted">방송 상태를 확인하는 중이에요…</p>}
-      <div className="h-[420px]">
-        <ChatPanel broadcastId={id} ownerId={ownerId} status={phase === "live" ? "live" : "ready"} room={liveRoom} />
-      </div>
+
+      <aside className={cx("flex min-h-0 flex-col bg-surface max-lg:rounded-md lg:w-[360px] lg:shrink-0 lg:border-l lg:border-line", live ? "h-60 lg:h-auto" : "max-lg:hidden")}>
+        {!live && (
+          <div className="flex flex-col gap-2 p-4">
+            <p className="text-heading-16">시청자 링크</p>
+            <div className="flex items-center gap-2 rounded-sm bg-raised py-2 pl-3 pr-2">
+              <span className="min-w-0 flex-1 truncate text-caption-12 text-muted">{linkOf().replace(/^https?:\/\//, "")}</span>
+              <Button variant="secondary" size="sm" onClick={copyLink}>
+                <CopyIcon size={16} />
+                링크 복사
+              </Button>
+            </div>
+          </div>
+        )}
+        {live && (
+          <div role="tablist" className="flex border-b border-line pl-2">
+            {(["chat", "mission"] as const).map((t) => (
+              <button
+                key={t}
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={cx("flex h-12 items-end border-b-2 px-4 pb-2 text-heading-16", tab === t ? "border-text text-text" : "border-transparent text-muted hover:text-text")}
+              >
+                {t === "chat" ? "채팅" : "미션"}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className={cx("min-h-0 flex-1", live && tab === "mission" && "hidden")}>
+          <ChatPanel
+            broadcastId={id}
+            ownerId={ownerId}
+            status={live ? "live" : "ready"}
+            room={liveRoom}
+            donationTotal={live ? undefined : props.donationTotal}
+            hideHeader={live}
+            inputClassName="max-lg:hidden"
+          />
+        </div>
+        {live && (
+          <div className={cx("min-h-0 flex-1 overflow-y-auto", tab !== "mission" && "hidden")}>
+            <MissionList broadcastId={id} room={liveRoom} />
+          </div>
+        )}
+      </aside>
+      {ending && (
+        <Dialog
+          title="방송을 종료할까요?"
+          description="시청자 화면도 함께 꺼져요."
+          confirmLabel="방송 종료"
+          danger
+          onClose={() => setEnding(false)}
+          onConfirm={() => {
+            setEnding(false);
+            void finish(true);
+          }}
+        />
+      )}
     </div>
   );
 }

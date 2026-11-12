@@ -7,7 +7,7 @@ import { useSession } from "@/entities/session/session";
 import { ChatPanel } from "@/features/chat/ChatPanel";
 import { apiFetch } from "@/shared/api/apiFetch";
 import { formatElapsed, formatTime, sourceLabel } from "@/shared/lib/format";
-import { Center } from "@/shared/ui";
+import { Avatar, buttonCls, EmptyState, HelpTip } from "@/shared/ui";
 
 type Replay = ApiRes<typeof recordingApi.getReplay>;
 
@@ -26,25 +26,32 @@ export default function ReplayPage({ params }: { params: Promise<{ id: string }>
   }, [id, loading]);
 
   if (data === undefined) return null;
-  if (data === null) return <Center><p className="text-muted">볼 수 없는 다시보기예요</p><Link href="/replays" className="text-sm text-accent underline">다시보기 목록</Link></Center>;
+  if (data === null) return <EmptyState title="볼 수 없는 다시보기예요" action={<Link href="/replays" className={buttonCls({ variant: "secondary" })}>다시보기 목록</Link>} />;
 
   const { recording: r, broadcast: b } = data;
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-4 sm:px-4 sm:py-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="flex min-w-0 flex-col gap-4">
-        <video src={data.playUrl} controls playsInline className="aspect-video w-full bg-black sm:rounded-xl" />
-        <div className="flex flex-col gap-1 px-4 sm:px-0">
-          <h1 className="truncate text-lg font-bold">{r.broadcastTitle}</h1>
-          <p className="text-sm text-muted">
-            {r.ownerNickname} · {sourceLabel[b.sourceType as "screen" | "camera"] ?? ""} · {formatTime(r.startedAt)}
-            {r.durationMs !== null && ` · ${formatElapsed(r.durationMs)}`}
-            {` · 후원 ${b.donationTotal.toLocaleString("ko-KR")}꿀`}
-          </p>
-          {!r.isPublic && <p className="text-xs text-muted">비공개 다시보기예요. 나만 볼 수 있어요</p>}
+    <div className="flex flex-1 flex-col lg:h-[calc(100dvh-var(--size-header))] lg:flex-row lg:overflow-hidden">
+      <div className="flex min-w-0 flex-col gap-4 pb-4 lg:flex-1 lg:overflow-y-auto lg:p-6">
+        <video src={data.playUrl} controls playsInline className="aspect-video w-full bg-screen lg:rounded-md" />
+        <div className="flex flex-col gap-2 px-4 lg:p-0">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 items-center rounded-full border border-line bg-raised px-3 text-caption-12 text-muted">다시보기</span>
+            <h1 className="min-w-0 flex-1 truncate text-heading-16 lg:text-heading-20">{r.broadcastTitle}</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Avatar name={r.ownerNickname} size="sm" />
+            <span className="text-heading-16">{r.ownerNickname}</span>
+            <span className="min-w-0 flex-1 truncate text-caption-12 text-muted">
+              {sourceLabel[b.sourceType as "screen" | "camera"] ?? ""} · {formatTime(r.startedAt)}
+              {r.durationMs !== null && ` · ${formatElapsed(r.durationMs)}`}
+              {` · 후원 합계 ${b.donationTotal.toLocaleString("ko-KR")}꿀`}
+            </span>
+            {!r.isPublic && <HelpTip text="비공개 다시보기예요. 나만 볼 수 있어요" label="비공개 안내" />}
+          </div>
         </div>
       </div>
-      <div className="h-[60vh] min-h-[360px] lg:h-[calc(100vh-7rem)]">
-        <ChatPanel broadcastId={r.broadcastId} ownerId={r.ownerId} status="ended" room={null} />
+      <div className="h-[60vh] min-h-80 border-t border-line lg:h-auto lg:w-[360px] lg:shrink-0 lg:border-l lg:border-t-0">
+        <ChatPanel broadcastId={r.broadcastId} ownerId={r.ownerId} status="ended" room={null} title="방송 때 남긴 채팅" inputClassName="hidden" />
       </div>
     </div>
   );

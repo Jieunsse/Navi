@@ -1,4 +1,5 @@
 import { findBannedWord } from "@nabi/shared";
+import { getBannedWords } from "./bannedWords.ts";
 import { chatItemSchema, type ChatItem } from "@nabi/shared/chat.ts";
 import { db, iso, Timestamp } from "../adapters/firebase.ts";
 import type { LiveKitPort } from "../adapters/livekit.ts";
@@ -34,7 +35,7 @@ export function chatUseCases(livekit: LiveKitPort, enforceTestLimit: (broadcastI
       if (b.status === "ended" || (await enforceTestLimit(broadcastId))) throw ENDED();
       await assertCanChat(viewer.uid, b.ownerId); // 영구 정지, 채팅 금지, 방송자의 활동 제한(4-14, 4-15)
 
-      const banned = findBannedWord(input.content);
+      const banned = findBannedWord(input.content, await getBannedWords());
       const cref = bref.collection("comments").doc(input.messageId);
       const lastRef = bref.collection("chatters").doc(viewer.uid);
 

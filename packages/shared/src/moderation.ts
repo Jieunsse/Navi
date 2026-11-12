@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { myAppealSchema } from "./adminOps.ts";
 import type { Contract } from "./contracts.ts";
 
 // 신고·활동 제한·운영자 제재 약속(4-13~4-15). 숫자는 임시값이라 여기서만 바꾼다.
@@ -87,6 +88,7 @@ export const sanctionItemSchema = z.object({
   reason: z.string(),
   status: sanctionStatusSchema, // 끝나는 시각이 지났으면 서버가 "끝남"으로 바꿔 내려준다
   revokeReason: z.string().nullable(),
+  appeal: myAppealSchema.nullish(), // 이의 제기를 했으면 그 상태(4-15)
 });
 export type SanctionItem = z.output<typeof sanctionItemSchema>;
 
@@ -162,7 +164,7 @@ export const moderationApi = {
     "GET",
     "/api/admin/dashboard",
     none,
-    z.object({ isTestAdmin: z.boolean(), broadcastsToday: z.number(), liveNow: z.number(), donationToday: z.number(), pendingReports: z.number() }),
+    z.object({ isTestAdmin: z.boolean(), broadcastsToday: z.number(), liveNow: z.number(), donationToday: z.number(), pendingReports: z.number(), pendingRefunds: z.number(), pendingAppeals: z.number() }),
   ),
   adminReports: c("GET", "/api/admin/reports", none, z.object({ items: z.array(adminReportGroupSchema) })),
   adminReportDetail: c(

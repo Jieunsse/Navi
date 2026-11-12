@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { cx, MicIcon, Volume2Icon } from "@/shared/ui";
 
-/** 소리 막대. 탭 소리와 마이크 소리를 따로 보여준다(4-4). */
-export function AudioMeter({ track, label }: { track: MediaStreamTrack | null; label: string }) {
+/** 소리 막대(시안의 MicMeter). 탭 소리와 마이크 소리를 따로 보여준다(4-4). */
+export function AudioMeter({ track, label, kind = "mic" }: { track: MediaStreamTrack | null; label: string; kind?: "mic" | "tab" }) {
   const bar = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!track) return;
@@ -26,13 +27,17 @@ export function AudioMeter({ track, label }: { track: MediaStreamTrack | null; l
     };
   }, [track]);
 
+  const Icon = kind === "tab" ? Volume2Icon : MicIcon;
   return (
-    <div className="flex items-center gap-3 text-xs">
-      <span className="w-14 shrink-0 text-muted">{label}</span>
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2" aria-hidden>
-        {track ? <div ref={bar} className="h-full w-0 rounded-full bg-accent transition-[width] duration-75" /> : null}
+    <div className="flex items-center gap-3">
+      <span className="w-14 shrink-0 text-caption-12 text-muted">{label}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Icon size={16} className={cx("shrink-0", track ? "text-muted" : "text-danger")} />
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-raised" aria-hidden>
+          {track ? <div ref={bar} className="h-full w-0 rounded-full bg-success transition-[width] duration-75" /> : null}
+        </div>
+        {!track && <span className="text-caption-12 text-danger">꺼짐</span>}
       </div>
-      {!track && <span className="text-danger">꺼짐</span>}
     </div>
   );
 }

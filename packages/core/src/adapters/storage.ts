@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /** 영상 파일 저장소. S3 호환 API라 배포는 Cloudflare R2, 로컬은 S3 호환 서버(docker-compose.dev.yml)를 쓴다. */
@@ -7,6 +7,8 @@ export interface StoragePort {
   signedGetUrl(key: string, ttlSec: number): Promise<string>;
   /** 파일이 없어도 오류로 보지 않는다 */
   remove(key: string): Promise<void>;
+  /** 파일을 올린다. 시드의 다시보기 예시 영상이 쓴다(4-18). 같은 키면 덮어쓴다. */
+  put(key: string, body: Uint8Array, contentType: string): Promise<void>;
 }
 
 export function storageConfig() {
@@ -38,6 +40,9 @@ export function createStorage(): StoragePort {
     async remove(key) {
       await s3.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }));
     },
+    async put(key, body, contentType) {
+      await s3.send(new PutObjectCommand({ Bucket: cfg.bucket, Key: key, Body: body, ContentType: contentType }));
+    },
   };
 }
 
@@ -55,5 +60,6 @@ export function createFakeStorage(): StoragePort & { removed: string[]; signed: 
     async remove(key) {
       removed.push(key);
     },
+    async put() {},
   };
 }

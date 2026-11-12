@@ -21,7 +21,7 @@ export const api = {
   testLogin: c("POST", "/api/auth/test-login", z.object({ account: z.enum(["broadcaster", "viewer", "admin"]) }), z.object({ token: z.string() })),
   me: c("GET", "/api/me", none, meSchema),
 
-  createBroadcast: c("POST", "/api/broadcasts", z.object({ title: titleSchema, sourceType: sourceTypeSchema }), z.object({ id: z.string() })),
+  createBroadcast: c("POST", "/api/broadcasts", z.object({ title: titleSchema, sourceType: sourceTypeSchema, withCamera: z.boolean().default(false) }), z.object({ id: z.string() })),
   getBroadcast: c("GET", "/api/broadcasts/:id", none, broadcastSchema),
   updateBroadcast: c("PATCH", "/api/broadcasts/:id", z.object({ title: titleSchema }), ok),
   deleteBroadcast: c("DELETE", "/api/broadcasts/:id", none, ok),

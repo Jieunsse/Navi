@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 import { useSession } from "@/entities/session/session";
 import { apiFetch } from "@/shared/api/apiFetch";
-import { Button, Center, Notice } from "@/shared/ui";
+import { buttonCls, CircleAlertIcon } from "@/shared/ui";
 
 export default function ChargeFailPage() {
   return (
@@ -32,11 +32,14 @@ function Fail() {
   }, [me, orderId]);
 
   return (
-    <Center>
-      <p className="text-lg font-bold">결제하지 못했어요</p>
-      <Notice tone="danger">{params?.get("message") ?? "결제가 취소되었거나 실패했어요"}</Notice>
-      <p className="text-sm text-muted">꿀은 들어가지 않았어요</p>
-      <Link href={back}><Button>원래 화면으로 돌아가기</Button></Link>
-    </Center>
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4 text-center">
+      <CircleAlertIcon size={24} className="text-danger" />
+      <div className="flex max-w-[480px] flex-col gap-2">
+        <p className="text-heading-20">결제하지 못했어요</p>
+        <p className="text-body-16 text-muted">{params?.get("message") ?? "결제가 취소되었거나 실패했어요"}. 꿀은 들어가지 않았어요</p>
+        {params?.get("code") && <p className="text-caption-12 text-subtle">오류 코드 {params.get("code")}</p>}
+      </div>
+      <Link href={back} className={buttonCls()}>원래 화면으로 돌아가기</Link>
+    </div>
   );
 }

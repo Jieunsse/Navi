@@ -43,15 +43,17 @@ test("하루는 한국 시간 0시부터다", () => {
   assert.equal(kstDayStart(new Date("2026-11-11T15:00:00Z")).toISOString(), "2026-11-11T15:00:00.000Z");
 });
 
-test("하루 한도에는 완료와 30분 안의 결제 대기만 센다", () => {
+test("하루 한도에는 완료, 취소, 30분 안의 결제 대기를 센다", () => {
   const now = 100 * 60_000;
   const list = [
     { honey: 1_000, status: "done", createdAtMs: 0 },
     { honey: 2_000, status: "pending", createdAtMs: now - 29 * 60_000 },
     { honey: 4_000, status: "pending", createdAtMs: now - 31 * 60_000 },
     { honey: 8_000, status: "failed", createdAtMs: now },
+    { honey: 16_000, status: "canceled", createdAtMs: 0 }, // 취소한 충전도 한도에서 빼지 않는다
+    { honey: 32_000, status: "canceling", createdAtMs: 0 },
   ];
-  assert.equal(chargedToday(list, now), 3_000);
+  assert.equal(chargedToday(list, now), 51_000);
 });
 
 test("충전 꿀 수 자동 선택", () => {

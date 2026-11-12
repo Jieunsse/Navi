@@ -3,22 +3,23 @@ import type { z } from "zod";
 import type { signupSchema } from "@nabi/shared";
 import { adminAuth, db, FieldValue, Timestamp } from "../adapters/firebase.ts";
 import { AppError, badRequest, conflict } from "../errors.ts";
+import { getBannedWords } from "./bannedWords.ts";
 
 export const nicknameKey = (n: string) => n.toLowerCase();
 
-export function assertNicknameAllowed(nickname: string) {
-  if (findBannedWord(nickname)) throw badRequest("NICKNAME_BANNED", "쓸 수 없는 닉네임이에요");
+export async function assertNicknameAllowed(nickname: string) {
+  if (findBannedWord(nickname, await getBannedWords())) throw badRequest("NICKNAME_BANNED", "쓸 수 없는 닉네임이에요");
 }
 
 export async function checkNickname(nickname: string) {
-  assertNicknameAllowed(nickname);
+  await assertNicknameAllowed(nickname);
   const snap = await db().collection("nicknames").doc(nicknameKey(nickname)).get();
   if (snap.exists) throw conflict("NICKNAME_TAKEN", "이미 쓰고 있는 닉네임이에요");
 }
 
 /** 새 사용자 문서와 닉네임 문서를 한 트랜잭션에서 만든다(4-1 회원가입 3단계). */
 export async function createUserDocs(uid: string, nickname: string, email: string | null, extra: Record<string, unknown> = {}) {
-  assertNicknameAllowed(nickname);
+  await assertNicknameAllowed(nickname);
   const fs = db();
   const nickRef = fs.collection("nicknames").doc(nicknameKey(nickname));
   const userRef = fs.collection("users").doc(uid);

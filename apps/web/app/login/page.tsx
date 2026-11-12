@@ -10,7 +10,7 @@ import { useNextPath } from "@/features/auth/next";
 import { SuspendedNotice } from "@/features/moderation/SuspendedNotice";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
 import { auth } from "@/shared/lib/firebase";
-import { Button, Field, Input, PasswordInput } from "@/shared/ui";
+import { AuthCard, Button, buttonCls, Field, GoogleIcon, Input, PasswordInput, RadioIcon, UserIcon } from "@/shared/ui";
 
 export default function LoginPage() {
   return (
@@ -70,11 +70,11 @@ function Login() {
     run(account, async () => signInWithCustomToken(auth, (await apiFetch(api.testLogin, { account })).token));
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-6 px-4 py-12">
-      <h1 className="text-2xl font-bold">로그인</h1>
+    <AuthCard logo>
+      <h1 className="sr-only">로그인</h1>
       {suspended && <SuspendedNotice />}
       <form
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-5"
         onSubmit={(e) => {
           e.preventDefault();
           void run("email", () => signInWithEmailAndPassword(auth, email.trim(), password));
@@ -86,34 +86,45 @@ function Login() {
         <Field label="비밀번호" error={error}>
           <PasswordInput autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </Field>
-        <Button type="submit" loading={busy === "email"} disabled={!email || !password}>
+        <div className="-my-2 flex justify-end">
+          <Link href="/reset-password" className={buttonCls({ variant: "ghost", size: "sm" })}>
+            비밀번호 찾기
+          </Link>
+        </div>
+        <Button type="submit" size="lg" loading={busy === "email"} disabled={!email || !password}>
           로그인
         </Button>
       </form>
-      <Button variant="secondary" loading={busy === "google"} onClick={() => run("google", signInWithGoogle)}>
+      <Button variant="secondary" size="lg" loading={busy === "google"} onClick={() => run("google", signInWithGoogle)}>
+        <GoogleIcon />
         Google로 계속하기
       </Button>
-      {googleError && <p className="text-sm text-danger">{googleError}</p>}
-      <div className="flex justify-between text-sm text-muted">
-        <Link href="/reset-password" className="hover:text-text">
-          비밀번호를 잊었어요
-        </Link>
-        <Link href={`/signup?next=${encodeURIComponent(next)}`} className="hover:text-text">
+      {googleError && <p className="text-caption-12 text-danger">{googleError}</p>}
+      <div className="flex items-center justify-center gap-1 text-body-16 text-muted">
+        아직 계정이 없나요?
+        <Link href={`/signup?next=${encodeURIComponent(next)}`} className={buttonCls({ variant: "ghost", size: "sm" })}>
           회원가입
         </Link>
       </div>
-      <div className="flex flex-col gap-2 border-t border-line pt-6">
-        <p className="text-xs text-muted">심사용 테스트 계정</p>
-        <Button variant="secondary" loading={busy === "broadcaster"} onClick={() => testLogin("broadcaster")}>
-          테스트 방송자로 로그인
+      <div className="flex items-center gap-3">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-caption-12 text-subtle">심사용 테스트 계정</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" className="flex-1 px-2" loading={busy === "broadcaster"} onClick={() => testLogin("broadcaster")}>
+          <RadioIcon />
+          방송자
         </Button>
-        <Button variant="secondary" loading={busy === "viewer"} onClick={() => testLogin("viewer")}>
-          테스트 시청자로 로그인
+        <Button variant="secondary" className="flex-1 px-2" loading={busy === "viewer"} onClick={() => testLogin("viewer")}>
+          <UserIcon />
+          시청자
         </Button>
-        <Button variant="secondary" loading={busy === "admin"} onClick={() => testLogin("admin")}>
-          테스트 운영자로 로그인
+        <Button variant="secondary" className="flex-1 px-2" loading={busy === "admin"} onClick={() => testLogin("admin")}>
+          <UserIcon />
+          운영자
         </Button>
       </div>
-    </div>
+    </AuthCard>
   );
 }

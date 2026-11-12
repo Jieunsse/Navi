@@ -2,7 +2,7 @@ import { REPORT_DAILY_LIMIT, REPORT_REASONS, type ChatBan, type MyReport, type S
 import type { z } from "zod";
 import type { chatBanInputSchema, createReportSchema } from "@nabi/shared/moderation.ts";
 import { db, iso, Timestamp } from "../adapters/firebase.ts";
-import { chatBanEnd, chatBlock, effectiveStatus, kstDayStart, stillBlocked } from "../domain/moderation.ts";
+import { chatBanEnd, chatBlock, effectiveStatus, kstDayStart, stillBlocked, summarize } from "../domain/moderation.ts";
 import { AppError, conflict, forbidden, notFound } from "../errors.ts";
 import type { Viewer } from "./auth.ts";
 
@@ -48,6 +48,32 @@ export const toSanctionItem = (id: string, s: SanctionDoc, now: Date): SanctionI
   status: effectiveStatus({ kind: s.kind, status: s.status, endAt: when(s.endAt) }, now),
   revokeReason: s.revokeReason ?? null,
 });
+
+/** 운영 기록 한 줄. 운영자가 한 일은 모두 이 함수로 남긴다(4-15). */
+export async function writeAdminLog(
+  admin: Viewer,
+  e: { action: string; targetType: string; targetId: string; targetNickname: string; targetSeed: boolean; reason: string; before: string; after: string },
+) {
+  await db().collection("adminLogs").add({ adminId: admin.uid, adminNickname: admin.user.nickname, ...e, createdAt: Timestamp.now() });
+}
+
+/** 적용 중인 제재에서 사용자 문서의 요약을 다시 만든다. 채팅·방송·로그인 확인은 이 요약만 본다(4-15). */
+export async function syncSanctionSummary(uid: string) {
+  const snap = await db().collection("sanctions").where("userId", "==", uid).get();
+  const sum = summarize(
+    snap.docs.map((d) => {
+      const s = d.data() as SanctionDoc;
+      return { kind: s.kind, status: s.status, endAt: when(s.endAt) };
+    }),
+    new Date(),
+  );
+  await users().doc(uid).update({
+    chatBannedUntil: sum.chatBannedUntil ? Timestamp.fromDate(sum.chatBannedUntil) : null,
+    broadcastBannedUntil: sum.broadcastBannedUntil ? Timestamp.fromDate(sum.broadcastBannedUntil) : null,
+    suspended: sum.suspended,
+    unseenWarning: sum.unseenWarning,
+  });
+}
 
 const blockError = {
   SUSPENDED: () => new AppError(403, "SUSPENDED", "운영정책 위반으로 이용이 정지된 계정이에요"),
@@ -168,7 +194,11 @@ export function moderationUseCases() {
     async mySanctions(viewer: Viewer): Promise<SanctionItem[]> {
       const snap = await db().collection("sanctions").where("userId", "==", viewer.uid).orderBy("startAt", "desc").limit(100).get();
       const now = new Date();
-      return snap.docs.map((d) => toSanctionItem(d.id, d.data() as SanctionDoc, now));
+      const appeals = snap.docs.length ? await db().getAll(...snap.docs.map((d) => db().collection("appeals").doc(d.id))) : []; // 이의 제기 문서 ID가 제재 ID다
+      return snap.docs.map((d, i) => {
+        const a = appeals[i]?.data() as { status: "pending" | "accepted" | "rejected"; answer?: string | null } | undefined;
+        return { ...toSanctionItem(d.id, d.data() as SanctionDoc, now), appeal: a ? { status: a.status, answer: a.answer ?? null } : null };
+      });
     },
 
     /** 경고 안내를 본 것으로 처리한다. 경고는 안내를 한 번 보여주면 끝난다(4-15). */

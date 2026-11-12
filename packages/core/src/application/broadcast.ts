@@ -1,9 +1,13 @@
 import { findBannedWord, type Broadcast, type SourceType } from "@nabi/shared";
+import { getBannedWords } from "./bannedWords.ts";
+import type { ChatItem } from "@nabi/shared/chat.ts";
 import { db, FieldValue, iso, Timestamp } from "../adapters/firebase.ts";
 import type { LiveKitPort } from "../adapters/livekit.ts";
 import { endStats, hostIdentity, overTestLimit } from "../domain/broadcast.ts";
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
 import type { Viewer } from "./auth.ts";
+import { readPromotion, writePromotion } from "./grade.ts";
+import { cleanupRemainingMissions, planMissionCleanup } from "./mission.ts";
 import { assertCanBroadcast } from "./moderation.ts";
 import { recordingRef, type RecordingUseCases } from "./recording.ts";
 
@@ -13,6 +17,7 @@ type BroadcastDoc = Omit<Broadcast, "id" | "createdAt" | "startedAt" | "endedAt"
   endedAt: Timestamp | null;
   roomName: string;
   recordingEnabled?: boolean;
+  withCamera?: boolean;
   recordingId?: string | null; // 방송 시작 때 만든 녹화 문서(4-9)
 };
 
@@ -44,8 +49,8 @@ async function loadOwned(viewer: Viewer, id: string) {
   return b;
 }
 
-function assertTitle(title: string) {
-  if (findBannedWord(title)) throw badRequest("TITLE_BANNED", "제목에 쓸 수 없는 말이 들어 있어요");
+async function assertTitle(title: string) {
+  if (findBannedWord(title, await getBannedWords())) throw badRequest("TITLE_BANNED", "제목에 쓸 수 없는 말이 들어 있어요");
 }
 
 export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUseCases) {
@@ -54,14 +59,21 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
     const ref = col().doc(id);
     // 녹화 3분이 지났는데 아직 안 멈췄다면 먼저 멈춘다(결정 28). 트랜잭션 뒤에는 "처리 중"이라 멈춤 대상이 아니다.
     await recordings.enforceLimit(((await ref.get()).data() as BroadcastDoc | undefined)?.recordingId);
+    let missionItems: ChatItem[] = [];
+    let ownerId = "";
     const ended = await db().runTransaction(async (tx) => {
+      missionItems = []; // 트랜잭션이 다시 돌 수 있어서 매번 비운다
       const snap = await tx.get(ref);
       const b = snap.data() as BroadcastDoc | undefined;
       if (!b || b.status !== "live") return false;
+      ownerId = b.ownerId;
       const recRef = b.recordingId ? recordingRef(b.recordingId) : null;
       const rec = recRef ? (await tx.get(recRef)).data() : undefined;
+      const missions = await planMissionCleanup(tx, id, b.ownerId); // 읽기는 쓰기 전에 모두 끝낸다
       const endedAt = Timestamp.now();
       const { durationMs, counted } = endStats(b.startedAt?.toDate() ?? null, endedAt.toDate());
+      // 승급 읽기도 쓰기 전에 끝낸다. 정리할 미션의 상금·응원금 건수도 함께 더해서 본다(4-12).
+      const promo = await readPromotion(tx, b.ownerId, { broadcastCount: counted, totalBroadcastMs: durationMs, donationCount: missions.donationCount });
       tx.update(ref, { status: "ended", endedAt });
       // 같은 트랜잭션에서 "녹화 중"을 "처리 중"으로 바꾼다(07 3장 2번)
       if (recRef && rec?.status === "recording") tx.update(recRef, { status: "processing", endedAt });
@@ -69,8 +81,16 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
         broadcastCount: FieldValue.increment(counted),
         totalBroadcastMs: FieldValue.increment(durationMs),
       });
+      // 3번: 대기 중 미션은 취소, 진행 중 미션은 실패로 정리하고 꿀을 움직인다(4-8)
+      missionItems = missions.apply();
+      writePromotion(tx, promo);
       return true;
     });
+    if (ended) {
+      // 한 트랜잭션에 다 못 담은 미션이 있으면 남은 것도 정리한다. 방이 닫히기 전에 상태 변화를 보낸다.
+      await cleanupRemainingMissions(id, ownerId, livekit);
+      for (const i of missionItems) await livekit.send(id, "mission", i);
+    }
     // 준비 상태 방송은 시청자만 나가도 방이 닫히므로 건드리지 않는다(07 3장).
     if (ended) await livekit.closeRoom(id);
     return ended;
@@ -110,15 +130,16 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
     end,
     enforceTestLimit: async (id: string) => enforceTestLimit(id, await load(id)),
 
-    async create(viewer: Viewer, input: { title: string; sourceType: SourceType }) {
+    async create(viewer: Viewer, input: { title: string; sourceType: SourceType; withCamera?: boolean }) {
       await assertCanBroadcast(viewer.uid);
-      assertTitle(input.title);
+      await assertTitle(input.title);
       const ref = col().doc();
       await ref.create({
         ownerId: viewer.uid,
         ownerNickname: viewer.user.nickname,
         title: input.title,
         sourceType: input.sourceType,
+        withCamera: input.sourceType === "screen" && !!input.withCamera, // 화면 공유일 때만(결정 15)
         status: "ready",
         recordingEnabled: false,
         roomName: ref.id, // 방 이름은 방송 ID와 같다(결정 30)
@@ -136,7 +157,7 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
     },
 
     async update(viewer: Viewer, id: string, title: string) {
-      assertTitle(title);
+      await assertTitle(title);
       const b = await loadOwned(viewer, id);
       await col().doc(id).update({ title });
       if (b.recordingId) await recordingRef(b.recordingId).update({ broadcastTitle: title }).catch(() => undefined);

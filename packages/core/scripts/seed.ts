@@ -1,7 +1,9 @@
-// shortcut: 지금은 버튼 계정 3개만 만든다. 후원·신고 기록 시드(4-18)는 그 기능을 만들 때 더한다.
-import { TEST_ACCOUNTS } from "@nabi/shared";
-import { adminAuth, db } from "../src/adapters/firebase.ts";
-import { createUserDocs } from "../src/application/account.ts";
+// pnpm seed → 심사용 테스트 계정 9개와 더미 데이터를 처음부터 다시 만든다(07 4-18).
+// pnpm seed --reset → 같은 함수를 부른다. 운영자 화면의 "전체 초기화"와 같다. 여러 번 돌려도 결과가 같다.
+// pnpm seed --target=production → 배포 환경. 프로젝트 이름을 한 번 더 입력해야 실행된다.
+import { createInterface } from "node:readline/promises";
+import { broadcasts } from "../src/container.ts";
+import { seedUseCases } from "../src/application/seed.ts";
 
 const target = process.argv.find((a) => a.startsWith("--target="))?.split("=")[1] ?? "emulator";
 if (target === "emulator" && !process.env.FIRESTORE_EMULATOR_HOST) {
@@ -9,26 +11,12 @@ if (target === "emulator" && !process.env.FIRESTORE_EMULATOR_HOST) {
   process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:9099";
 }
 if (target === "production") {
-  const { createInterface } = await import("node:readline/promises");
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const typed = await rl.question(`실행하려면 Firebase 프로젝트 이름(${process.env.FIREBASE_PROJECT_ID})을 입력하세요: `);
   rl.close();
   if (typed !== process.env.FIREBASE_PROJECT_ID) throw new Error("프로젝트 이름이 맞지 않아 멈췄어요");
 }
 
-const accounts = [
-  { uid: TEST_ACCOUNTS.broadcaster, nickname: "테스트방송자", seedKind: "testBroadcaster" },
-  { uid: TEST_ACCOUNTS.viewer, nickname: "테스트시청자", seedKind: "testViewer" },
-  { uid: TEST_ACCOUNTS.admin, nickname: "테스트운영자", seedKind: "testAdmin", isAdmin: true, isTestAdmin: true },
-];
-
-for (const a of accounts) {
-  const email = `${a.uid}@nabi.test`;
-  await adminAuth().getUser(a.uid).catch(() => adminAuth().createUser({ uid: a.uid, email, password: crypto.randomUUID() }));
-  const exists = (await db().collection("users").doc(a.uid).get()).exists;
-  if (!exists) {
-    const { uid, nickname, ...extra } = a;
-    await createUserDocs(uid, nickname, email, { ...extra, seedData: true });
-  }
-  console.log(`${exists ? "있음" : "만듦"}: ${a.nickname}`);
-}
+const started = Date.now();
+await seedUseCases({ end: broadcasts().end, log: (m) => console.log(m) }).rebuild();
+console.log(`끝: 계정 9개와 더미 데이터를 만들었어요 (${Math.round((Date.now() - started) / 1000)}초)`);

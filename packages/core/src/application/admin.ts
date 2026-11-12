@@ -14,7 +14,10 @@ import { adminAuth, db, iso, Timestamp } from "../adapters/firebase.ts";
 import type { LiveKitPort } from "../adapters/livekit.ts";
 import { inTestAdminScope, kstDayStart, sanctionEnd, sanctionRefusal, summarize } from "../domain/moderation.ts";
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
+import { operatorAction, reportResolved } from "../domain/notification.ts";
 import { requireUser, type UserDoc, type Viewer } from "./auth.ts";
+import { notify, writeNotification } from "./notification.ts";
+import { recordingRef } from "./recording.ts";
 import { reportLabel, toSanctionItem, type ReportDoc, type SanctionDoc, type SummaryDoc } from "./moderation.ts";
 
 type FullUser = UserDoc & SummaryDoc;
@@ -49,6 +52,8 @@ function toBrief(uid: string, u: FullUser, v: Viewer): AdminUser {
     broadcastBannedUntil: iso(u.broadcastBannedUntil as Timestamp | null),
   };
 }
+
+const REPORT_KIND = { chat: "채팅", broadcast: "방송", user: "사용자" } as const;
 
 export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) => Promise<boolean>) {
   const sanctions = () => db().collection("sanctions");
@@ -130,6 +135,13 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
     });
   }
 
+  /** 이미 끝난 방송이면 다시보기를 비공개로 바꾸고 알림 문구를 돌려준다(4-15). */
+  async function privateReplay(broadcastId: string, reason: string) {
+    const recId = (await db().collection("broadcasts").doc(broadcastId).get()).data()?.recordingId as string | null | undefined;
+    if (recId) await recordingRef(recId).update({ isPublic: false });
+    return `운영정책 위반(${reason})으로 다시보기를 비공개로 바꿨어요`;
+  }
+
   async function hideChat(admin: Viewer, r: ReportDoc, reason: string) {
     const cref = db().collection("broadcasts").doc(r.broadcastId!).collection("comments").doc(r.targetId);
     const snap = await cref.get();
@@ -142,6 +154,7 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
       if (c.kind === "donation") await db().collection("donations").doc(r.targetId).update({ messageHidden: true });
       const item = chatItemSchema.safeParse({ ...c, kind: c.kind ?? "chat", content: "", hidden: true, createdAt: iso(c.createdAt) });
       if (item.success) await livekit.send(r.broadcastId!, item.data.kind === "donation" ? "donation" : "chat", item.data);
+      await notify(r.targetUserId, operatorAction(`운영정책 위반(${reason})으로 채팅을 숨겼어요`, r.targetId));
     }
     await log(admin, { action: "채팅 숨기기", targetType: "chat", targetId: r.targetId, targetNickname: r.snapshot.authorNickname ?? "", targetSeed: r.targetSeed, reason, before: "표시", after: "숨김" });
   }
@@ -151,14 +164,16 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
       const today = Timestamp.fromDate(kstDayStart(new Date()));
       const bs = () => db().collection("broadcasts");
       const count = async (q: Query) => (await q.count().get()).data().count;
-      const [broadcastsToday, liveNow, pendingReports, donations] = await Promise.all([
+      const [broadcastsToday, liveNow, pendingReports, pendingRefunds, pendingAppeals, donations] = await Promise.all([
         count(bs().where("createdAt", ">=", today)),
         count(bs().where("status", "==", "live")),
         count(db().collection("reports").where("status", "==", "pending")),
+        count(db().collection("refunds").where("status", "in", ["pending", "failed"])),
+        count(db().collection("appeals").where("status", "==", "pending")),
         db().collection("donations").where("createdAt", ">=", today).get(),
       ]);
       const donationToday = donations.docs.reduce((n, d) => n + ((d.data().amount as number | undefined) ?? 0), 0);
-      return { isTestAdmin: isTest(admin), broadcastsToday, liveNow, donationToday, pendingReports };
+      return { isTestAdmin: isTest(admin), broadcastsToday, liveNow, donationToday, pendingReports, pendingRefunds, pendingAppeals };
     },
 
     /** 신고를 대상 사용자별로 묶는다(4-15). */
@@ -235,6 +250,7 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
         if (r.targetType === "chat") await hideChat(admin, r, input.reason);
         else if (r.targetType === "broadcast") {
           const ended = await endBroadcast(r.targetId);
+          await notify(r.targetUserId, operatorAction(ended ? `운영정책 위반(${input.reason})으로 방송을 강제로 종료했어요` : await privateReplay(r.targetId, input.reason), r.targetId));
           await log(admin, { action: "방송 강제 종료", targetType: "broadcast", targetId: r.targetId, targetNickname: r.snapshot.title ?? "", targetSeed: r.targetSeed, reason: input.reason, before: ended ? "방송 중" : "방송 중 아님", after: "종료" });
         } else throw badRequest("INVALID", "사용자 신고는 숨길 콘텐츠가 없어요");
       } else {
@@ -244,7 +260,11 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
       const status = input.action === "dismiss" ? "dismissed" : "actioned";
       const batch = db().batch();
       const now = Timestamp.now();
-      pending.forEach((d) => batch.update(d.ref, { status, processedBy: admin.uid, processReason: input.reason, processedAt: now }));
+      pending.forEach((d) => {
+        batch.update(d.ref, { status, processedBy: admin.uid, processReason: input.reason, processedAt: now });
+        const r = d.data() as ReportDoc;
+        writeNotification(batch, r.reporterId, reportResolved(REPORT_KIND[r.targetType], status === "actioned", d.id));
+      });
       await batch.commit();
       await log(admin, {
         action: input.action === "dismiss" ? "신고 기각" : "신고 조치",

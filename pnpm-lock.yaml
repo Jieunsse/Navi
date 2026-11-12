@@ -124,6 +124,9 @@ importers:
       zod:
         specifier: ^4.3.5
         version: 4.6.7
+      zod-openapi:
+        specifier: ^6.0.2
+        version: 6.0.2(zod@4.6.7)
     devDependencies:
       typescript:
         specifier: ^5
@@ -4966,6 +4969,12 @@ packages:
     resolution: {integrity: sha512-zK7YHHz4ZXpW89AHXUPbQVGKI7uvkd3hzusTdotCg1UxyaVtg0zFJSTfW/Dq5f7OBBVnq6cZIaC8Ti4hb6dtCA==}
     engines: {node: '>= 14'}
 
+  zod-openapi@6.0.2:
+    resolution: {integrity: sha512-SwC5Ppi2ov8WimzNWP/XK95VqPyLDzxPYj10HgNPzhZH9gO7zx0sxdYL9eq7wOADHx1JddOApjhYDmMWQvnVnw==}
+    engines: {node: '>=22.14.0'}
+    peerDependencies:
+      zod: ^4.0.0
+
   zod-to-json-schema@3.25.2:
     resolution: {integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==}
     peerDependencies:
@@ -5901,7 +5910,7 @@ snapshots:
   '@grpc/grpc-js@1.9.16':
     dependencies:
       '@grpc/proto-loader': 0.7.15
-      '@types/node': 20.19.43
+      '@types/node': 22.20.5
 
   '@grpc/proto-loader@0.7.15':
     dependencies:
@@ -10598,6 +10607,10 @@ snapshots:
       archiver-utils: 5.0.2
       compress-commons: 6.0.2
       readable-stream: 4.8.0
+
+  zod-openapi@6.0.2(zod@4.6.7):
+    dependencies:
+      zod: 4.6.7
 
   zod-to-json-schema@3.25.2(zod@4.6.7):
     dependencies:

@@ -10,6 +10,6 @@
     "isolatedModules": true,
     "types": []
   },
-  "include": ["src", "scripts"],
+  "include": ["src"],
   "exclude": ["src/**/*.test.ts"] // node:test 타입(@types/node)을 이 패키지에 두지 않는다. 테스트는 node가 직접 돌린다
 }

@@ -4,18 +4,25 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import type { z } from "zod";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
-import { Button } from "@/shared/ui";
+import { Button, cx, IconButton, XIcon } from "@/shared/ui";
 
 type Reason = keyof typeof REPORT_REASONS;
 export type ReportTarget = Pick<z.input<typeof createReportSchema>, "targetType" | "targetId" | "broadcastId">;
 
-/** 아래에서 올라오는 시트. 바깥을 누르면 닫힌다. */
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+/** 아래에서 올라오는 시트(PC는 오른쪽 아래). 바깥을 누르면 닫힌다. */
+export function Sheet({ title, badge, onClose, children }: { title: string; badge?: ReactNode; onClose: () => void; children: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal aria-label={title}>
-      <button className="absolute inset-0 bg-black/60" onClick={onClose} aria-label="닫기" />
-      <div className="relative flex max-h-[90vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-2xl border border-line bg-surface p-5 sm:rounded-2xl">
-        <h2 className="text-base font-bold">{title}</h2>
+    <div className="fixed inset-0 z-[var(--z-sheet)] flex items-end justify-center lg:justify-end" role="dialog" aria-modal aria-label={title}>
+      <button className="absolute inset-0 bg-scrim" onClick={onClose} aria-label="닫기" />
+      <div className="relative flex max-h-[90dvh] w-full flex-col gap-4 overflow-y-auto rounded-t-lg bg-raised px-4 pb-8 pt-4 shadow-overlay lg:w-[360px]">
+        <span aria-hidden className="mx-auto h-1 w-8 shrink-0 rounded-full bg-strong" />
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-heading-20">{title}</h2>
+          {badge}
+          <IconButton label="닫기" onClick={onClose} className="ml-auto size-12">
+            <XIcon size={24} />
+          </IconButton>
+        </div>
         {children}
       </div>
     </div>
@@ -47,39 +54,43 @@ export function ReportForm({ target, label, onDone, onBack }: { target: ReportTa
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <p className="text-sm text-muted">{label}</p>
-      <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 text-sm font-medium">사유</legend>
+      <p className="text-caption-12 text-muted">{label}</p>
+      <fieldset className="flex flex-wrap gap-2" role="radiogroup" aria-label="사유">
         {(Object.keys(REPORT_REASONS) as Reason[]).map((r) => (
-          <label key={r} className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-surface-2">
-            <input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} />
+          <button
+            key={r}
+            type="button"
+            role="radio"
+            aria-checked={reason === r}
+            onClick={() => setReason(r)}
+            className={cx("h-8 rounded-full px-3 text-caption-12", reason === r ? "bg-accent text-accent-ink" : "border border-line bg-raised text-muted hover:bg-hover")}
+          >
             {REPORT_REASONS[r]}
-          </label>
+          </button>
         ))}
       </fieldset>
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium">설명{reason === "other" ? " (필수)" : " (선택)"}</span>
+      <label className="flex flex-col gap-2">
+        <span className="text-caption-12 text-muted">설명({reason === "other" ? "필수" : "선택"}, {REPORT_DETAIL_MAX}자까지)</span>
         <textarea
           value={detail}
           maxLength={REPORT_DETAIL_MAX}
           onChange={(e) => setDetail(e.target.value)}
-          rows={3}
-          className="rounded-lg border border-line bg-surface p-3 text-sm outline-none focus:border-accent"
+          className="h-[120px] resize-none rounded-sm border border-line bg-surface px-4 py-3 text-body-16 outline-none focus:border-[var(--color-focus-ring)]"
         />
-        <span className="text-right text-xs text-muted">
+        <span className="self-end text-caption-12 text-subtle">
           {detail.length}/{REPORT_DETAIL_MAX}
         </span>
       </label>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-caption-12 text-danger">
           {error}
         </p>
       )}
       <div className="flex gap-2">
-        <Button type="button" variant="secondary" onClick={onBack} className="flex-1">
+        <Button type="button" variant="secondary" size="lg" onClick={onBack} className="flex-1">
           뒤로
         </Button>
-        <Button type="submit" loading={busy} disabled={!reason || (reason === "other" && !detail.trim())} className="flex-1">
+        <Button type="submit" variant="danger" size="lg" loading={busy} disabled={!reason || (reason === "other" && !detail.trim())} className="flex-1">
           신고하기
         </Button>
       </div>

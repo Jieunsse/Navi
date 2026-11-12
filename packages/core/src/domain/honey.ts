@@ -41,8 +41,10 @@ export const isAdult = (birth: string, now: Date) => koreanAge(birth, now) >= AD
 /** 오늘 0시(한국 시간) */
 export const kstDayStart = (now: Date) => new Date(Math.floor((now.getTime() + KST_MS) / 86_400_000) * 86_400_000 - KST_MS);
 
-/** 하루 한도에 들어가는 꿀: 완료된 충전 + 만든 지 30분이 안 된 결제 대기(4-8). 취소·실패는 이 모델에서 완료만 센다. */
+/** 하루 한도에 들어가는 꿀: 완료된 충전 + 만든 지 30분이 안 된 결제 대기. 취소한 충전도 센다(되풀이로 한도를 넘지 못하게, 4-8). 실패는 뺀다. */
 export function chargedToday(charges: readonly { honey: number; status: string; createdAtMs: number }[], nowMs: number) {
-  return charges.reduce((sum, c) => sum + (c.status === "done" || (c.status === "pending" && nowMs - c.createdAtMs < PENDING_CHARGE_MS) ? c.honey : 0), 0);
+  const counted = (c: { status: string; createdAtMs: number }) =>
+    c.status === "done" || c.status === "canceling" || c.status === "canceled" || (c.status === "pending" && nowMs - c.createdAtMs < PENDING_CHARGE_MS);
+  return charges.reduce((sum, c) => sum + (counted(c) ? c.honey : 0), 0);
 }
 export const remainingToday = (used: number) => Math.max(0, DAILY_CHARGE_LIMIT - used);

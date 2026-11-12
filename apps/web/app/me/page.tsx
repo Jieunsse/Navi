@@ -1,6 +1,7 @@
 "use client";
 import { api } from "@nabi/shared";
 import { accountApi, type MyDonation } from "@nabi/shared/account.ts";
+import { GRADE_LABEL, gradeApi } from "@nabi/shared/grade.ts";
 import { honeyApi } from "@nabi/shared/honey.ts";
 import { EmailAuthProvider, getRedirectResult, GoogleAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, reauthenticateWithRedirect } from "firebase/auth";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { useRequireLogin, useSession } from "@/entities/session/session";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
 import { formatTime } from "@/shared/lib/format";
 import { auth } from "@/shared/lib/firebase";
-import { Button, Center, Input, Notice, PasswordInput } from "@/shared/ui";
+import { Button, buttonCls, EmptyState, HelpTip, Input, Notice, PasswordInput, Spinner, StatCard, Tabs } from "@/shared/ui";
 
 const REDIRECT_KEY = "nabi:withdraw";
 const won = (n: number) => n.toLocaleString("ko-KR");
@@ -18,14 +19,39 @@ const errText = (e: unknown) => (e instanceof ApiError ? e.message : "연결이 
 
 export default function MePage() {
   const { me } = useRequireLogin();
-  if (!me) return <Center><p className="text-muted">불러오는 중…</p></Center>;
+  const [tab, setTab] = useState<"donations" | "account">("donations");
+  const [balance, setBalance] = useState<number | null>(null);
+  const [grade, setGrade] = useState<{ label: string; share: number } | null>(null);
+  useEffect(() => {
+    if (!me) return;
+    void apiFetch(honeyApi.wallet).then((w) => setBalance(w.balance), () => undefined);
+    void apiFetch(gradeApi.myGrade).then((g) => setGrade({ label: GRADE_LABEL[g.grade], share: g.sharePercent }), () => undefined);
+  }, [me]);
+  if (!me) return <div className="grid flex-1 place-items-center"><Spinner /></div>;
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-8 px-4 py-8">
-      <h1 className="text-2xl font-bold">내 정보</h1>
-      <NicknameSection />
-      <HoneySection />
-      <DonationSection />
-      <WithdrawSection />
+    <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-heading-28">내 정보</h1>
+        <Link href="/me/grade" className={buttonCls({ variant: "secondary" })}>
+          내 등급 보기
+        </Link>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="닉네임" value={me.nickname} />
+        <StatCard label="등급" value={grade ? `${grade.label} · 후원 배분 ${grade.share}%` : "…"} />
+        <Link href="/me/honey" className="contents">
+          <StatCard label="쓸 수 있는 꿀" value={balance === null ? "…" : `${won(balance)}꿀`} />
+        </Link>
+      </div>
+      <Tabs label="내 정보" value={tab} onChange={setTab} items={[{ value: "donations", label: "내 후원 내역" }, { value: "account", label: "계정" }]} />
+      {tab === "donations" ? (
+        <DonationSection />
+      ) : (
+        <div className="flex flex-col gap-8">
+          <NicknameSection />
+          <WithdrawSection />
+        </div>
+      )}
     </div>
   );
 }
@@ -74,40 +100,19 @@ function NicknameSection() {
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-base font-bold">닉네임</h2>
-      <p className="text-sm">
-        지금 닉네임: <b>{me?.nickname}</b>
-      </p>
-      <div className="flex gap-2">
+    <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 md:p-8">
+      <h2 className="text-heading-16">닉네임 변경</h2>
+      <div className="flex flex-col gap-2 md:flex-row">
         <Input aria-label="새 닉네임" placeholder={changed ? "이미 한 번 바꿨어요" : "새 닉네임"} disabled={changed} value={nickname} onChange={(e) => { setNickname(e.target.value); setChecked(null); setMsg(null); }} />
         <Button type="button" variant="secondary" className="shrink-0" disabled={changed || !nickname.trim()} loading={busy === "check"} onClick={check}>
           중복 확인
         </Button>
-        <Button type="button" className="shrink-0" disabled={changed || checked === null || checked !== nickname.trim()} loading={busy === "save"} onClick={save}>
+        <Button type="button" variant="primary" className="shrink-0" disabled={changed || checked === null || checked !== nickname.trim()} loading={busy === "save"} onClick={save}>
           변경
         </Button>
       </div>
-      {msg && <span className={`text-xs ${msg.ok ? "text-accent" : "text-danger"}`}>{msg.text}</span>}
-      {!changed && <span className="text-xs text-muted">닉네임은 한 번만 바꿀 수 있어요</span>}
-    </section>
-  );
-}
-
-function HoneySection() {
-  const [balance, setBalance] = useState<number | null>(null);
-  useEffect(() => {
-    void apiFetch(honeyApi.wallet).then((w) => setBalance(w.balance), () => undefined);
-  }, []);
-  return (
-    <section className="flex items-center justify-between rounded-xl border border-line bg-surface p-5">
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-muted">내 꿀</span>
-        <span className="text-2xl font-black text-accent">{balance === null ? "…" : won(balance)}</span>
-      </div>
-      <Link href="/me/honey" className="text-sm underline">
-        충전하고 내역 보기
-      </Link>
+      {msg && <span className={`text-caption-12 ${msg.ok ? "text-success" : "text-danger"}`}>{msg.text}</span>}
+      {!changed && <span className="text-caption-12 text-subtle">닉네임은 한 번만 바꿀 수 있어요</span>}
     </section>
   );
 }
@@ -117,29 +122,25 @@ function DonationSection() {
   useEffect(() => {
     void apiFetch(accountApi.myDonations).then(setData, () => undefined);
   }, []);
+  if (!data) return <Spinner />;
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-base font-bold">내 후원 내역</h2>
-        {data && <span className="text-sm text-muted">합계 {won(data.total)}꿀</span>}
-      </div>
-      {data && data.items.length === 0 && <p className="text-sm text-muted">후원 내역이 없어요</p>}
-      {data?.items.map((d) => (
-        <div key={d.id} className="flex flex-col gap-1 rounded-lg border border-line px-3 py-2 text-sm">
-          <div className="flex items-center justify-between gap-2">
-            <span className="truncate">
-              {d.broadcastTitle}
-              {d.broadcastDeleted && <span className="text-xs text-muted"> (지운 방송)</span>}
-            </span>
-            <b className="shrink-0 text-accent">{won(d.amount)}꿀</b>
-          </div>
-          <span className="text-xs text-muted">
-            {d.streamerNickname} · {d.kind === "mission" ? "미션" : "채팅"} · {formatTime(d.createdAt)}
-            {d.anonymous && " · 익명으로 후원함"}
-          </span>
-          {d.message && <span className="text-xs">{d.message}</span>}
-        </div>
-      ))}
+    <section className="flex flex-col gap-4">
+      {data.items.length === 0 && <EmptyState title="후원 내역이 없어요" />}
+      <ul className="flex flex-col gap-2">
+        {data.items.map((d) => (
+          <li key={d.id} className="flex flex-col gap-1 rounded-lg bg-surface p-4">
+            <p className="text-heading-16">
+              {won(d.amount)}꿀 · {d.kind === "mission" ? "미션 후원" : "채팅 후원"}
+              {d.anonymous && " · 익명으로 후원함"}
+            </p>
+            <p className="text-caption-12 text-subtle">
+              {formatTime(d.createdAt)} · {d.broadcastDeleted ? "지운 방송" : d.broadcastTitle} · {d.streamerNickname}
+              {d.message && ` · "${d.message}"`}
+            </p>
+          </li>
+        ))}
+      </ul>
+      {data.items.length > 0 && <p className="text-caption-12 text-subtle">합계 {won(data.total)}꿀</p>}
     </section>
   );
 }
@@ -206,15 +207,13 @@ function WithdrawSection() {
   }
 
   return (
-    <section className="flex flex-col gap-2 border-t border-line pt-6">
-      <h2 className="flex items-center gap-1 text-base font-bold">
+    <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 md:p-8">
+      <h2 className="flex items-center gap-1 text-heading-16">
         회원 탈퇴
-        <span title="방송을 끝내고 녹화가 끝난 뒤에 탈퇴할 수 있어요" aria-label="방송을 끝내고 녹화가 끝난 뒤에 탈퇴할 수 있어요" className="inline-flex size-5 cursor-help items-center justify-center rounded-full border border-line text-xs text-muted">
-          ?
-        </span>
+        <HelpTip text="방송을 끝내고 녹화가 끝난 뒤에 탈퇴할 수 있어요" />
       </h2>
       {!open ? (
-        <Button variant="secondary" className="self-start" onClick={() => setOpen(true)}>
+        <Button variant="danger" className="self-start" onClick={() => setOpen(true)}>
           탈퇴하기
         </Button>
       ) : (
@@ -223,9 +222,9 @@ function WithdrawSection() {
           {usesPassword ? (
             <PasswordInput aria-label="비밀번호" autoComplete="current-password" placeholder="비밀번호를 한 번 더 입력해 주세요" value={password} onChange={(e) => setPassword(e.target.value)} />
           ) : (
-            <p className="text-sm text-muted">구글 로그인 창으로 한 번 더 확인해요.</p>
+            <p className="text-caption-12 text-subtle">구글 로그인 창으로 한 번 더 확인해요.</p>
           )}
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-caption-12 text-danger">{error}</p>}
           <div className="flex gap-2">
             <Button variant="danger" loading={busy} disabled={usesPassword && !password} onClick={run}>
               탈퇴하기

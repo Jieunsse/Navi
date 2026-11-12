@@ -43,10 +43,10 @@ export function SanctionForm({ user, onDone, submit }: { user: AdminUser; onDone
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-line p-4">
-      <h3 className="text-sm font-bold">제재하기</h3>
+    <div className="flex flex-col gap-2 rounded-lg bg-surface p-4">
+      <h3 className="text-heading-16">제재하기</h3>
       <div className="flex flex-wrap gap-2">
-        <select value={kind} onChange={(e) => { setKind(e.target.value as Kind); setDays(undefined); }} aria-label="제재 종류" className="h-10 rounded-lg border border-line bg-surface px-2 text-sm">
+        <select value={kind} onChange={(e) => { setKind(e.target.value as Kind); setDays(undefined); }} aria-label="제재 종류" className="h-10 rounded-sm border border-line bg-raised px-3 text-body-16">
           {kinds.map((k) => (
             <option key={k} value={k}>
               {SANCTION_LABEL[k]}
@@ -54,7 +54,7 @@ export function SanctionForm({ user, onDone, submit }: { user: AdminUser; onDone
           ))}
         </select>
         {needDays && (
-          <select value={days ?? options[0]} onChange={(e) => setDays(Number(e.target.value))} aria-label="기간" className="h-10 rounded-lg border border-line bg-surface px-2 text-sm">
+          <select value={days ?? options[0]} onChange={(e) => setDays(Number(e.target.value))} aria-label="기간" className="h-10 rounded-sm border border-line bg-raised px-3 text-body-16">
             {options.map((d) => (
               <option key={d} value={d}>
                 {d}일
@@ -64,7 +64,7 @@ export function SanctionForm({ user, onDone, submit }: { user: AdminUser; onDone
         )}
       </div>
       <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="사유 (필수)" aria-label="사유" />
-      {refusal && <p className="text-xs text-danger">{refusal}</p>}
+      {refusal && <p className="text-caption-12 text-danger">{refusal}</p>}
       <Button variant="danger" loading={busy} disabled={!!refusal || !reason.trim()} onClick={run}>
         제재 걸기
       </Button>

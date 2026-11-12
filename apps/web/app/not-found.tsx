@@ -1,13 +1,17 @@
+"use client";
 import Link from "next/link";
+import { buttonCls, EmptyState } from "@/shared/ui";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
-      <p className="text-5xl font-black text-accent">404</p>
-      <p className="text-muted">찾는 페이지가 없어요</p>
-      <Link href="/" className="inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-accent-ink">
-        홈으로 가기
-      </Link>
-    </div>
+    <EmptyState
+      title="방송을 찾을 수 없어요"
+      description="삭제되었거나 주소가 바뀌었어요"
+      action={
+        <Link href="/" className={buttonCls({ variant: "secondary" })}>
+          다른 방송 보기
+        </Link>
+      }
+    />
   );
 }

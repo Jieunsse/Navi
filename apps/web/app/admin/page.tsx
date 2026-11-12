@@ -1,26 +1,34 @@
 "use client";
+import Link from "next/link";
+import { buttonCls, StatCard } from "@/shared/ui";
 import { AdminGate, useAdmin } from "@/features/admin/AdminGate";
 
 function AdminDashboardBody() {
   const d = useAdmin();
-  const cards = [
-    ["오늘 만든 방송", d.broadcastsToday],
-    ["지금 방송 중", d.liveNow],
-    ["오늘 후원 합계(꿀)", d.donationToday.toLocaleString()],
-    ["처리할 신고", d.pendingReports],
-  ] as const;
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-bold">대시보드</h1>
-      <div className="grid max-w-3xl grid-cols-4 gap-3">
-        {cards.map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4">
-            <span className="text-xs text-muted">{label}</span>
-            <span className="text-2xl font-black">{value}</span>
-          </div>
-        ))}
+    <div className="flex flex-col gap-8">
+      <h1 className="text-heading-28">대시보드</h1>
+      <div className="grid gap-4 md:grid-cols-2">
+        <StatCard label="오늘 방송" value={`${d.broadcastsToday}개`} sub={`지금 방송 중 ${d.liveNow}개`} />
+        <StatCard label="오늘 후원 합계" value={`${d.donationToday.toLocaleString("ko-KR")}꿀`} />
+        <Todo label="처리할 신고" count={d.pendingReports} href="/admin/reports" action="신고 처리로" />
+        <Todo label="처리할 이의 제기" count={d.pendingAppeals} href="/admin/appeals" action="이의 제기로" />
+        <Todo label="처리할 환급 신청" count={d.pendingRefunds} href="/admin/refunds" action="환급 관리로" />
       </div>
     </div>
+  );
+}
+
+// 처리할 일이 있으면 카드의 버튼으로 바로 간다.
+function Todo({ label, count, href, action }: { label: string; count: number; href: string; action: string }) {
+  return (
+    <StatCard label={label} value={`${count}건`}>
+      {count > 0 && (
+        <Link href={href} className={buttonCls({ variant: "secondary", size: "sm", className: "mt-1 self-start" })}>
+          {action}
+        </Link>
+      )}
+    </StatCard>
   );
 }
 

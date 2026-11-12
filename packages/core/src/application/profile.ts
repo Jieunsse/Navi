@@ -1,4 +1,5 @@
 import { WITHDRAWN_NICKNAME, type MyDonation } from "@nabi/shared/account.ts";
+import { ACTIVE_REFUND_STATUSES } from "@nabi/shared/honey.ts";
 import { adminAuth, db, iso, Timestamp } from "../adapters/firebase.ts";
 import { isBlockingCharge, isRecentLogin } from "../domain/account.ts";
 import { AppError, conflict, forbidden, unauthorized } from "../errors.ts";
@@ -24,7 +25,7 @@ const isSeed = (v: Viewer) => !!v.user.seedKind;
 /** 닉네임 한 번 변경(4-11). 예전 닉네임은 붙잡아 둬서 다른 사람이 흉내 내지 못하게 한다. */
 export async function changeNickname(v: Viewer, nickname: string) {
   if (isSeed(v)) throw forbidden("테스트 계정은 닉네임을 바꿀 수 없어요");
-  assertNicknameAllowed(nickname);
+  await assertNicknameAllowed(nickname);
   const fs = db();
   const userRef = fs.collection("users").doc(v.uid);
   const newRef = fs.collection("nicknames").doc(nicknameKey(nickname));
@@ -67,7 +68,7 @@ export async function myDonations(v: Viewer): Promise<{ items: MyDonation[]; tot
 /**
  * 회원 탈퇴(4-11). 조건 확인 → 계정 정지 → 기록 정리 → 계정 삭제.
  * 기록 정리 중 실패하면 같은 요청을 다시 보내면 된다(바꾸고 지우는 일이라 결과가 같다).
- * 아직 없는 기능(제재, 녹화, 미션, 정산, 환급)에 걸린 조건은 넣지 않았다.
+ * 아직 없는 기능(정산)에 걸린 조건은 넣지 않았다.
  */
 export async function withdraw(v: Viewer) {
   const fs = db();
@@ -75,11 +76,18 @@ export async function withdraw(v: Viewer) {
   if (isSeed(v)) throw forbidden("테스트 계정은 탈퇴할 수 없어요");
   if (!isRecentLogin(v.authTime, Date.now())) throw new AppError(401, "REAUTH_REQUIRED", "비밀번호를 한 번 더 확인해 주세요");
 
-  const [live, pending] = await Promise.all([
+  const [live, pending, canceling, missions, refunds] = await Promise.all([
     fs.collection("broadcasts").where("ownerId", "==", uid).where("status", "==", "live").limit(1).get(),
     fs.collection("charges").where("userId", "==", uid).where("status", "==", "pending").get(),
+    fs.collection("charges").where("userId", "==", uid).where("status", "==", "canceling").limit(1).get(),
+    fs.collection("donations").where("donorId", "==", uid).where("kind", "==", "mission").where("missionStatus", "in", ["pending", "active"]).limit(1).get(),
+    fs.collection("refunds").where("userId", "==", uid).where("status", "in", ACTIVE_REFUND_STATUSES).limit(1).get(),
   ]);
   if (!live.empty) throw conflict("WITHDRAW_BLOCKED", "방송을 끝낸 뒤에 탈퇴할 수 있어요");
+  // 꿀이 움직이는 중이면 탈퇴할 수 없다(4-8, 4-11): 묶인 미션, 취소 중인 충전, 처리 중인 환급
+  if (!missions.empty) throw conflict("WITHDRAW_BLOCKED", "진행 중이거나 기다리는 미션이 있어요. 미션이 끝난 뒤에 탈퇴할 수 있어요");
+  if (!canceling.empty) throw conflict("WITHDRAW_BLOCKED", "충전을 취소하는 중이라 잠시 뒤에 탈퇴할 수 있어요");
+  if (!refunds.empty) throw conflict("WITHDRAW_BLOCKED", "환급을 처리하는 중이라 끝난 뒤에 탈퇴할 수 있어요");
   if (pending.docs.some((d) => isBlockingCharge({ status: "pending", createdAtMs: (d.data().createdAt as Timestamp).toMillis() }, Date.now())))
     throw conflict("WITHDRAW_BLOCKED", "결제를 처리하는 중이라 잠시 뒤에 탈퇴할 수 있어요");
 

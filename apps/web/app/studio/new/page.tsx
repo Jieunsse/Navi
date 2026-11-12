@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { useRequireLogin } from "@/entities/session/session";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
-import { Button, cx, Field, Input } from "@/shared/ui";
+import { Button, cx, Field, HelpTip, Input, ScreenShareIcon, Switch, VideoIcon } from "@/shared/ui";
 
 // 휴대폰 브라우저에는 화면 공유가 없다(4-3).
 const noop = () => () => {};
@@ -16,6 +16,7 @@ export default function NewBroadcastPage() {
   const screenOk = useSyncExternalStore(noop, canShareScreen, () => false);
   const [titleInput, setTitle] = useState<string | null>(null);
   const [sourceChoice, setSource] = useState<SourceType | null>(null);
+  const [withCamera, setWithCamera] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,8 +26,8 @@ export default function NewBroadcastPage() {
   const tooLong = title.length > TITLE_MAX;
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-10">
-      <h1 className="text-2xl font-bold">방송 만들기</h1>
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-6 px-4 py-4 md:py-12">
+      <h1 className="text-heading-20 md:text-heading-28">방송 만들기</h1>
       <form
         className="flex flex-col gap-6"
         onSubmit={async (e) => {
@@ -34,7 +35,7 @@ export default function NewBroadcastPage() {
           setBusy(true);
           setError("");
           try {
-            const { id } = await apiFetch(api.createBroadcast, { title: title.trim(), sourceType: source });
+            const { id } = await apiFetch(api.createBroadcast, { title: title.trim(), sourceType: source, withCamera: source === "screen" && withCamera });
             router.push(`/studio/${id}`);
           } catch (err) {
             setError(err instanceof ApiError ? err.message : "잠시 뒤에 다시 시도해 주세요");
@@ -42,39 +43,54 @@ export default function NewBroadcastPage() {
           }
         }}
       >
-        <Field label="제목" error={error || (tooLong ? `제목은 ${TITLE_MAX}자까지예요` : undefined)}>
-          <div className="relative">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} invalid={tooLong || !!error} className="pr-16" />
-            <span className={cx("absolute inset-y-0 right-3 grid place-items-center text-xs", tooLong ? "text-danger" : "text-muted")}>
-              {title.length}/{TITLE_MAX}
-            </span>
-          </div>
+        <Field label="방송 제목" error={error || (tooLong ? `제목은 ${TITLE_MAX}자까지예요` : undefined)}>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} invalid={tooLong || !!error} />
+          <span className={cx("self-end text-caption-12", tooLong ? "text-danger" : "text-subtle")}>
+            {title.length}/{TITLE_MAX}
+          </span>
         </Field>
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">송출 방식</span>
-          <div className="grid grid-cols-2 gap-3">
+          <span className="text-heading-16">송출 방식</span>
+          <div className="flex flex-col gap-3 md:flex-row">
             {(
               [
-                ["screen", "🖥️", "PC 화면 공유", screenOk ? "탭이나 창을 그대로 보여줘요" : "휴대폰에서는 고를 수 없어요"],
-                ["camera", "📷", "카메라", "카메라와 마이크로 방송해요"],
+                ["screen", <ScreenShareIcon key="s" size={24} />, "PC 화면 공유", screenOk ? undefined : "휴대폰에서는 고를 수 없어요"],
+                ["camera", <VideoIcon key="v" size={24} />, "카메라", undefined],
               ] as const
-            ).map(([key, icon, label, desc]) => (
-              <button
-                key={key}
-                type="button"
-                disabled={key === "screen" && !screenOk}
-                onClick={() => setSource(key)}
-                aria-pressed={source === key}
-                className={cx("flex flex-col items-start gap-1 rounded-xl border p-4 text-left disabled:opacity-40", source === key ? "border-accent bg-accent/10" : "border-line bg-surface")}
-              >
-                <span className="text-2xl">{icon}</span>
-                <span className="font-semibold">{label}</span>
-                <span className="text-xs text-muted">{desc}</span>
-              </button>
-            ))}
+            ).map(([key, icon, label, desc]) => {
+              const on = source === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={key === "screen" && !screenOk}
+                  onClick={() => setSource(key)}
+                  aria-pressed={on}
+                  className={cx("flex min-w-0 flex-1 items-center gap-4 rounded-md p-4 text-left disabled:cursor-not-allowed disabled:opacity-40", on ? "border-2 border-accent bg-raised" : "border border-line bg-surface hover:border-strong")}
+                >
+                  <span className={cx("grid size-12 shrink-0 place-items-center rounded-sm", on ? "bg-surface" : "bg-raised")}>{icon}</span>
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="text-heading-16">{label}</span>
+                    {desc && <span className="text-caption-12 text-muted">{desc}</span>}
+                  </span>
+                  <span aria-hidden className={cx("grid size-5 shrink-0 place-items-center rounded-full border-2", on ? "border-accent" : "border-strong")}>
+                    {on && <span className="size-2 rounded-full bg-accent" />}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
-        <Button type="submit" loading={busy} disabled={!title.trim() || tooLong}>
+        {source === "screen" && screenOk && (
+          <div className="flex items-center gap-1">
+            <div className="flex w-80 max-w-full items-center justify-between gap-3">
+              <span className="text-body-16">내 얼굴도 같이 보여주기</span>
+              <Switch checked={withCamera} onChange={setWithCamera} label="내 얼굴도 같이 보여주기" />
+            </div>
+            <HelpTip text="화면 오른쪽 아래에 작은 카메라 창이 나와요" />
+          </div>
+        )}
+        <Button type="submit" size="lg" loading={busy} disabled={!title.trim() || tooLong}>
           만들기
         </Button>
       </form>

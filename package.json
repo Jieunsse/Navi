@@ -2,7 +2,9 @@
   "name": "nabi",
   "private": true,
   "packageManager": "pnpm@10.23.0",
-  "engines": { "node": ">=22.14.0" },
+  "engines": {
+    "node": ">=22.14.0"
+  },
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
@@ -11,7 +13,8 @@
     "emulators": "firebase emulators:start --only auth,firestore --project demo-nabi",
     "livekit": "livekit-server --dev --bind 0.0.0.0 --config livekit.dev.yaml",
     "seed": "pnpm --filter @nabi/core seed",
-    "test-token": "pnpm --filter @nabi/core test-token"
+    "test-token": "pnpm --filter @nabi/core test-token",
+    "openapi": "pnpm --filter @nabi/shared openapi"
   },
   "devDependencies": {
     "firebase-tools": "^15.0.0"
