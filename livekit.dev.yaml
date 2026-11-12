@@ -1,0 +1,16 @@
+# 로컬 LiveKit 개발 서버 설정. 키는 --dev 기본값(devkey/secret)과 같다.
+port: 7880
+keys:
+  devkey: secret
+# egress(방 합성 녹화)가 LiveKit과 말을 주고받는 곳. docker-compose.dev.yml의 redis다.
+redis:
+  address: localhost:6379
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50100
+  use_external_ip: false
+webhook:
+  api_key: devkey
+  urls:
+    - http://localhost:3000/api/webhooks/livekit

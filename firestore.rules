@@ -1,0 +1,14 @@
+rules_version = '2';
+// 브라우저는 아무것도 쓰지 못한다. 쓰기는 모두 Next 서버를 거친다(07 1장, 6장).
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /broadcasts/{id} {
+      allow read: if true;
+      match /comments/{c} { allow read: if true; }
+    }
+    match /recordings/{id} {
+      allow read: if resource.data.isPublic == true && resource.data.status == "ready";
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

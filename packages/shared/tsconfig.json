@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "types": []
+  },
+  "include": ["src", "scripts"],
+  "exclude": ["src/**/*.test.ts"] // node:test 타입(@types/node)을 이 패키지에 두지 않는다. 테스트는 node가 직접 돌린다
+}

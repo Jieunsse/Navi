@@ -1,0 +1,27 @@
+# 로컬 녹화 환경: redis(LiveKit과 egress가 서로 말을 주고받는 곳), egress(방 합성 녹화), S3 호환 저장소.
+# 띄우기: docker compose -f docker-compose.dev.yml up -d
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  # S3 호환 저장소. MinIO 이미지는 Docker Hub에서 내려가서 같은 S3 API를 쓰는 s3mock으로 대신한다.
+  # 로그인 키는 검사하지 않지만, 배포(R2)와 같은 코드가 돌도록 키 변수는 그대로 채운다.
+  storage:
+    image: adobe/s3mock
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: nabi-recordings
+    ports: ["9090:9090"]
+
+  egress:
+    image: livekit/egress
+    depends_on: [redis, storage]
+    cap_add: [SYS_ADMIN]
+    environment:
+      EGRESS_CONFIG_BODY: |
+        api_key: devkey
+        api_secret: secret
+        ws_url: ws://host.docker.internal:7880
+        redis:
+          address: redis:6379
+        insecure: true

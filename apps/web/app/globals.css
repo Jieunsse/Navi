@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* 어두운 화면만 둔다. 밝은 화면 전환은 빼는 순서 10번이다. */
+:root {
+  --bg: #0e0f12;
+  --surface: #17181c;
+  --surface-2: #22242a;
+  --line: #2e3038;
+  --text: #f2f3f5;
+  --muted: #9a9ca5;
+  --accent: #ffc53d;
+  --accent-ink: #1a1400;
+  --danger: #ff5c5c;
+  --live: #ff3b3b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-live: var(--live);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
