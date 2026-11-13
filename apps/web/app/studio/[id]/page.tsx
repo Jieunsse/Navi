@@ -9,6 +9,7 @@ import { useBroadcastDoc } from "@/entities/broadcast/model";
 import { ChatPanel } from "@/features/chat/ChatPanel";
 import { useRequireLogin } from "@/entities/session/session";
 import { MissionList } from "@/features/donation/MissionList";
+import { DonationAlert } from "@/features/studio/DonationAlert";
 import { AudioMeter } from "@/features/studio/AudioMeter";
 import { RecordSwitch } from "@/features/studio/RecordSwitch";
 import { Stepper } from "@/features/studio/Stepper";
@@ -51,10 +52,15 @@ function Ended({ id, recording }: { id: string; recording?: boolean }) {
   return (
     <EmptyState
       title="방송이 끝났어요"
-      description={recording ? "다시보기를 만드는 중이에요. 다 되면 내 방송 관리에서 공개할 수 있어요" : "시청자에게도 끝났다고 보여요"}
+      description="시청자에게도 끝났다고 보여요"
       action={
         <div className="flex flex-col items-center gap-3">
-          {recording && <Spinner />}
+          {recording && (
+            <>
+              <Spinner />
+              <p className="text-caption-12 text-muted">다시보기를 만드는 중이에요. 다 되면 내 방송 관리에서 공개할 수 있어요</p>
+            </>
+          )}
           <div className="flex gap-2">
             <Link href="/studio" className={buttonCls({ variant: "secondary" })}>내 방송 관리</Link>
             <Link href="/studio/new" className={buttonCls()}>새 방송 만들기</Link>
@@ -388,10 +394,8 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
               </>
             )}
             <span className="ml-auto flex items-center gap-2 lg:gap-3">
-              <span className={cx("text-number-16", quality !== "good" ? "text-danger" : "text-muted")} title={`연결 ${qualityLabel}`}>
-                {formatElapsed(elapsed)}
-              </span>
-              {quality !== "good" && <span className="text-caption-12 text-danger">연결 {qualityLabel}</span>}
+              <span className={cx("text-number-16", quality !== "good" ? "text-danger" : "text-muted")}>{formatElapsed(elapsed)}</span>
+              <span className={cx("text-caption-12", quality !== "good" ? "text-danger" : "text-muted")}>{qualityLabel}</span>
               <Button variant="secondary" size="sm" className="max-lg:hidden" onClick={() => window.open(`/live/${id}`, "_blank")}>
                 <LinkIcon size={16} />
                 시청자 화면으로 보기
@@ -455,6 +459,7 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
                 </div>
               </div>
             ))}
+          {live && <DonationAlert room={liveRoom} />}
           {video && isScreen && cam && (
             <div className="absolute bottom-3 right-3 aspect-video w-1/5 min-w-24 overflow-hidden rounded-sm border border-line bg-screen">
               <video ref={camPreview} autoPlay muted playsInline className={cx("size-full -scale-x-100 object-cover", camOff && "invisible")} />
@@ -479,7 +484,10 @@ function Publisher(props: { id: string; ownerId: string; title: string; sourceTy
                 </div>
               ))}
               {isScreen && !tabAudio && (
-                <Button variant="secondary" size="sm" className="self-start" onClick={shareScreen}>다시 공유</Button>
+                <>
+                  <Notice tone="warn">탭 소리가 들어오지 않아요. 탭 오디오 공유를 켜고 다시 공유해 주세요</Notice>
+                  <Button variant="secondary" size="sm" className="self-start" onClick={shareScreen}>다시 공유</Button>
+                </>
               )}
             </div>
             <div className="flex flex-col gap-3 lg:items-end">

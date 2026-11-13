@@ -1,13 +1,15 @@
 "use client";
+import { honeyApi } from "@nabi/shared/honey.ts";
 import { GRADE_LABEL, type Grade } from "@nabi/shared/grade.ts";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useHomeBroadcasts } from "@/entities/broadcast/model";
+import { apiFetch } from "@/shared/api/apiFetch";
 import { loginHref, useSession } from "@/entities/session/session";
 import { NotificationBell } from "@/features/notification/NotificationBell";
 import { SanctionBanner } from "@/features/moderation/SanctionBanner";
-import { Avatar, AwardIcon, buttonCls, cx, FlagIcon, HistoryIcon, HoneyIcon, IconButton, LayoutGridIcon, Logo, LogOutIcon, MenuIcon, RadioIcon, ThemeToggle, UserIcon, VideoIcon, BanIcon } from "@/shared/ui";
+import { Avatar, AwardIcon, buttonCls, cx, FlagIcon, GiftIcon, HistoryIcon, HoneyIcon, IconButton, LayoutGridIcon, Logo, LogOutIcon, MenuIcon, RadioIcon, ThemeToggle, UserIcon, VideoIcon, BanIcon } from "@/shared/ui";
 
 const menus = [
   { href: "/", label: "전체 방송", icon: RadioIcon },
@@ -117,6 +119,7 @@ function ProfileMenu({ onLogout }: { onLogout: () => void }) {
         <Link href="/me" className={itemCls}><UserIcon /> 내 정보</Link>
         <Link href="/me/honey" className={itemCls}><HoneyIcon /> 내 꿀</Link>
         <Link href="/me/grade" className={itemCls}><AwardIcon /> 내 등급</Link>
+        <Link href="/me?tab=donations" className={itemCls}><GiftIcon /> 내 후원 내역</Link>
         <Link href="/me/reports" className={itemCls}><FlagIcon /> 내 신고 내역</Link>
         <Link href="/me/sanctions" className={itemCls}><BanIcon /> 제재 내역</Link>
       </nav>
@@ -137,6 +140,10 @@ function ProfileMenu({ onLogout }: { onLogout: () => void }) {
 function Sidebar({ onClose, path }: { onClose: () => void; path: string }) {
   const { live } = useHomeBroadcasts(5);
   const { me } = useSession();
+  const [balance, setBalance] = useState<number | null>(null);
+  useEffect(() => {
+    if (me) void apiFetch(honeyApi.wallet).then((w) => setBalance(w.balance), () => undefined); // 휴대폰 사이드바의 잔액 표시(4-16)
+  }, [me]);
   return (
     <div className="fixed inset-x-0 bottom-0 top-[var(--size-header)] z-[var(--z-sheet)]" role="dialog" aria-modal aria-label="사이드바">
       <button className="absolute inset-0 bg-scrim" onClick={onClose} aria-label="사이드바 닫기" />
@@ -146,7 +153,7 @@ function Sidebar({ onClose, path }: { onClose: () => void; path: string }) {
           {me && (
             <>
               <SideLink href="/studio" icon={<VideoIcon />} label="스튜디오" />
-              <SideLink href="/me/honey" icon={<HoneyIcon />} label="내 꿀" />
+              <SideLink href="/me/honey" icon={<HoneyIcon />} label={balance === null ? "내 꿀" : `내 꿀 ${balance.toLocaleString("ko-KR")}`} />
             </>
           )}
           <ThemeToggle withLabel />
@@ -176,6 +183,16 @@ function Sidebar({ onClose, path }: { onClose: () => void; path: string }) {
             더보기
           </Link>
         </section>
+        {/* 누르면 내 꿀의 충전 창을 연다. 내 꿀 화면이 charge=1을 읽어 연다. 비로그인이면 로그인을 거쳐 온다. */}
+        <Link
+          href={me ? "/me/honey?charge=1" : loginHref("/me/honey?charge=1")}
+          className="mt-auto flex flex-col gap-1 rounded-md bg-surface p-3 hover:bg-hover"
+        >
+          <span className="flex items-center gap-2 text-heading-16">
+            <HoneyIcon /> 꿀 충전
+          </span>
+          <span className="text-caption-12 text-muted">충전한 꿀로 준비 중이거나 방송 중인 방송자에게 후원할 수 있어요</span>
+        </Link>
       </aside>
     </div>
   );

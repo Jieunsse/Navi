@@ -1,5 +1,5 @@
 import { APPEAL_STATUS_LABEL, type AdminAppeal, type resolveAppealSchema } from "@nabi/shared/adminOps.ts";
-import { SANCTION_LABEL, TEST_ADMIN_SCOPE_MESSAGE } from "@nabi/shared/moderation.ts";
+import { MASKED_NICKNAME, SANCTION_LABEL, TEST_ADMIN_SCOPE_MESSAGE } from "@nabi/shared/moderation.ts";
 import type { z } from "zod";
 import { db, iso, Timestamp } from "../adapters/firebase.ts";
 import { appealRefusal } from "../domain/appeal.ts";
@@ -56,15 +56,15 @@ export const appealUseCases = {
     }
   },
 
-  /** 처리할 것이 앞에 오게 한다. 테스트 운영자는 시드 계정 것만 본다(결정 25). */
+  /** 처리할 것이 앞에 오게 한다. 테스트 운영자에게 실제 사용자 줄은 빼지 않고 가려서 보여준다(4-15). */
   async adminList(admin: Viewer): Promise<AdminAppeal[]> {
     const snap = await appeals().orderBy("createdAt", "desc").limit(200).get();
-    const rows = snap.docs.map((d) => ({ id: d.id, a: d.data() as AppealDoc })).filter((x) => !admin.user.isTestAdmin || x.a.userSeed);
+    const rows = snap.docs.map((d) => ({ id: d.id, a: d.data() as AppealDoc }));
     rows.sort((x, y) => Number(y.a.status === "pending") - Number(x.a.status === "pending"));
     return rows.map(({ id, a }) => ({
       id,
-      userNickname: a.userNickname,
-      masked: false,
+      userNickname: admin.user.isTestAdmin && !a.userSeed ? MASKED_NICKNAME : a.userNickname,
+      masked: !!admin.user.isTestAdmin && !a.userSeed,
       sanctionKind: a.sanctionKind,
       sanctionReason: a.sanctionReason,
       content: a.content,

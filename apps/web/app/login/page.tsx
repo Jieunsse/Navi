@@ -88,7 +88,7 @@ function Login() {
         </Field>
         <div className="-my-2 flex justify-end">
           <Link href="/reset-password" className={buttonCls({ variant: "ghost", size: "sm" })}>
-            비밀번호 찾기
+            비밀번호를 잊었어요
           </Link>
         </div>
         <Button type="submit" size="lg" loading={busy === "email"} disabled={!email || !password}>
@@ -111,18 +111,18 @@ function Login() {
         <span className="text-caption-12 text-subtle">심사용 테스트 계정</span>
         <span className="h-px flex-1 bg-line" />
       </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" className="flex-1 px-2" loading={busy === "broadcaster"} onClick={() => testLogin("broadcaster")}>
+      <div className="flex flex-col gap-2">
+        <Button variant="secondary" loading={busy === "broadcaster"} onClick={() => testLogin("broadcaster")}>
           <RadioIcon />
-          방송자
+          테스트 방송자로 로그인
         </Button>
-        <Button variant="secondary" className="flex-1 px-2" loading={busy === "viewer"} onClick={() => testLogin("viewer")}>
+        <Button variant="secondary" loading={busy === "viewer"} onClick={() => testLogin("viewer")}>
           <UserIcon />
-          시청자
+          테스트 시청자로 로그인
         </Button>
-        <Button variant="secondary" className="flex-1 px-2" loading={busy === "admin"} onClick={() => testLogin("admin")}>
+        <Button variant="secondary" loading={busy === "admin"} onClick={() => testLogin("admin")}>
           <UserIcon />
-          운영자
+          테스트 운영자로 로그인
         </Button>
       </div>
     </AuthCard>

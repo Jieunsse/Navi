@@ -63,3 +63,18 @@ export function sanctionRefusal(
 
 /** 한국 시간 기준 오늘 0시. 신고 하루 한도를 센다(4-13). */
 export const kstDayStart = (now: Date) => new Date(Math.floor((now.getTime() + 9 * 3600_000) / DAY) * DAY - 9 * 3600_000);
+
+/** 한국 시간 기준 이번 달 1일 0시. 대시보드의 이번 달 합계가 시작하는 때다(4-15). */
+export function kstMonthStartOf(now: Date) {
+  const t = new Date(now.getTime() + 9 * 3600_000);
+  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1) - 9 * 3600_000);
+}
+
+/** 방송 시간 합계(ms). 아직 방송 중이면 지금까지를 센다. 시작하지 않은 방송은 0이다. */
+export function broadcastDuration(rows: readonly { startedAt: Date | null; endedAt: Date | null }[], now: Date) {
+  return rows.reduce((n, r) => (r.startedAt ? n + Math.max(0, (r.endedAt ?? now).getTime() - r.startedAt.getTime()) : n), 0);
+}
+
+type ReportStatus = "pending" | "actioned" | "dismissed";
+/** 신고 묶음의 상태. 접수된 것이 하나라도 있으면 접수, 아니면 가장 최근 신고의 결과다. rows는 최근 것이 앞이다. */
+export const reportGroupStatus = (rows: readonly { status: ReportStatus }[]): ReportStatus => (rows.some((r) => r.status === "pending") ? "pending" : (rows[0]?.status ?? "pending"));

@@ -12,6 +12,8 @@ export const TEST_ADMIN_SCOPE_MESSAGE = "테스트 운영자는 심사용 계정
 /** 테스트 운영자가 제재할 수 없는 시드 계정 종류(4-15, 4-18) */
 export const PROTECTED_SEED_KINDS: readonly string[] = ["testBroadcaster", "testViewer", "testAdmin", "sample"];
 export const TEST_ACCOUNT_PROTECTED_MESSAGE = "심사용 테스트 계정은 제재할 수 없어요";
+/** 대시보드에서 녹화 시간을 견주는 LiveKit 무료 사용량(4-15). 서비스 한도(50분)와는 다르다. */
+export const LIVEKIT_FREE_RECORDING_MS = 60 * 60_000;
 
 export const reportTargetSchema = z.enum(["chat", "broadcast", "user"]);
 export const REPORT_REASONS = {
@@ -114,8 +116,23 @@ export const adminReportGroupSchema = z.object({
   count: z.number(),
   latestReason: reportReasonSchema,
   firstAt: z.string(),
-  status: z.enum(["pending", "done"]),
+  status: reportStatusSchema, // 접수된 신고가 하나라도 있으면 pending, 아니면 가장 최근 신고의 결과
 });
+/** 전체 제재 목록(O-6)의 한 줄. 제재 내역에 사용자 이름이 붙는다. */
+export const adminSanctionItemSchema = sanctionItemSchema.extend({ userId: z.string(), userNickname: z.string(), masked: z.boolean() });
+export type AdminSanctionItem = z.output<typeof adminSanctionItemSchema>;
+
+/** 회원 상세(O-13)에 더 붙는 정보 */
+export const adminUserExtraSchema = z.object({
+  honeyBalance: z.number(),
+  receivedDonationCount: z.number(),
+  receivedHoney: z.number(), // 방송자에게 실제로 전달된 꿀 합계
+  hasPayoutAccount: z.boolean(),
+  identityVerified: z.boolean(),
+  settlementHold: z.boolean(),
+  sameIdentityDonations: z.array(z.object({ id: z.string(), amount: z.number(), broadcastTitle: z.string(), createdAt: z.string() })),
+});
+
 export const adminReportItemSchema = z.object({
   id: z.string(),
   targetType: reportTargetSchema,
@@ -164,7 +181,18 @@ export const moderationApi = {
     "GET",
     "/api/admin/dashboard",
     none,
-    z.object({ isTestAdmin: z.boolean(), broadcastsToday: z.number(), liveNow: z.number(), donationToday: z.number(), pendingReports: z.number(), pendingRefunds: z.number(), pendingAppeals: z.number() }),
+    z.object({
+      isTestAdmin: z.boolean(),
+      broadcastsToday: z.number(),
+      liveNow: z.number(),
+      donationToday: z.number(), // 실제로 전달된 꿀
+      nabiShareToday: z.number(),
+      pendingReports: z.number(),
+      pendingRefunds: z.number(),
+      pendingAppeals: z.number(),
+      recordedMsThisMonth: z.number(),
+      broadcastMsThisMonth: z.number(),
+    }),
   ),
   adminReports: c("GET", "/api/admin/reports", none, z.object({ items: z.array(adminReportGroupSchema) })),
   adminReportDetail: c(
@@ -175,7 +203,8 @@ export const moderationApi = {
   ),
   adminResolve: c("POST", "/api/admin/reports/:userId/resolve", resolveSchema, ok),
   adminUsers: c("GET", "/api/admin/users", none, z.object({ items: z.array(userBrief) })),
-  adminUserDetail: c("GET", "/api/admin/users/:userId", none, z.object({ user: userBrief, sanctions: z.array(sanctionItemSchema), reportCount: z.number() })),
+  adminUserDetail: c("GET", "/api/admin/users/:userId", none, z.object({ user: userBrief, sanctions: z.array(sanctionItemSchema), reportCount: z.number(), extra: adminUserExtraSchema })),
+  adminSanctions: c("GET", "/api/admin/sanctions", none, z.object({ items: z.array(adminSanctionItemSchema) })),
   adminSanction: c("POST", "/api/admin/users/:userId/sanctions", sanctionInputSchema, ok),
   adminRevoke: c("POST", "/api/admin/sanctions/:id/revoke", z.object({ reason: adminReason }), ok),
   adminLogs: c("GET", "/api/admin/logs", none, z.object({ items: z.array(adminLogSchema) })),

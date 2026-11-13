@@ -1,6 +1,6 @@
 "use client";
 import { honeyApi, LEDGER_LABEL, REFUND_MIN, REFUND_STATUS_LABEL, type Wallet } from "@nabi/shared/honey.ts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useRequireLogin } from "@/entities/session/session";
 import { ChargeBox } from "@/features/donation/ChargeBox";
@@ -18,10 +18,17 @@ export default function MyHoneyPage() {
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [refundOpen, setRefundOpen] = useState(false);
   const [tab, setTab] = useState<"charges" | "refunds" | "ledger">("charges");
+  const chargeRef = useRef<HTMLElement>(null);
   const reload = useCallback(async () => setWallet(await apiFetch(honeyApi.wallet).catch(() => null)), []);
   useEffect(() => {
     if (me) void apiFetch(honeyApi.wallet).then(setWallet, () => undefined);
   }, [me]);
+
+  // 사이드바의 "꿀 충전"은 ?charge=1로 온다. 충전 창은 늘 펼쳐져 있으니 그 칸으로 스크롤한다.
+  const ready = !!me && !!wallet;
+  useEffect(() => {
+    if (ready && new URLSearchParams(location.search).get("charge") === "1") chargeRef.current?.scrollIntoView({ block: "start" });
+  }, [ready]);
 
   if (!me || !wallet) return <div className="grid flex-1 place-items-center"><Spinner /></div>;
 
@@ -50,7 +57,7 @@ export default function MyHoneyPage() {
         <StatCard label="환급 대기 중인 꿀" value={`${won(wallet.pendingRefund)}꿀`} />
       </div>
 
-      <section className="flex flex-col gap-4">
+      <section ref={chargeRef} className="flex scroll-mt-4 flex-col gap-4">
         <h2 className="text-heading-16">꿀 충전</h2>
         <ChargeBox wallet={wallet} reload={reload} returnTo="/me/honey" />
       </section>
@@ -72,7 +79,7 @@ export default function MyHoneyPage() {
               {c.status === "done" && (
                 <div className="flex items-center gap-3">
                   <span className={c.cancelable ? "text-caption-12 text-success" : "text-caption-12 text-subtle"}>
-                    {c.cancelable ? `취소할 수 있음 · ${formatTime(c.cancelableUntil)}까지` : "취소할 수 없음"}
+                    {c.cancelable ? `취소할 수 있음 · ${formatTime(c.cancelableUntil)}까지` : `취소할 수 없음${c.cancelBlockedReason ? ` · ${c.cancelBlockedReason}` : ""}`}
                   </span>
                   {c.cancelable && (
                     <Button variant="secondary" size="sm" loading={cancelling === c.id} disabled={!!cancelling} onClick={() => void cancel(c.id, c.honey)}>

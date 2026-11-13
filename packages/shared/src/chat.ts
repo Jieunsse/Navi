@@ -34,5 +34,9 @@ const c = <Req extends z.ZodType, Res extends z.ZodType>(method: Contract["metho
   ({ method, path, req, res }) satisfies Contract<Req, Res>;
 
 export const chatApi = {
+  /** 방송 보기 화면용: 방송자의 방송 금지 여부, 로그인한 본인의 채팅 막힘 안내(4-14, 4-15) */
+  broadcastAccess: c("GET", "/api/broadcasts/:id/access", z.object({}), z.object({ ownerBroadcastBanned: z.boolean(), chatBlock: z.string().nullable() })),
+  /** 사용자 시트용: 시드 샘플 계정이면 화면에 "예시"를 붙인다(4-18) */
+  authorExample: c("GET", "/api/broadcasts/:id/authors/:userId/example", z.object({}), z.object({ example: z.boolean() })),
   sendChat: c("POST", "/api/broadcasts/:id/chat", chatSendSchema, chatItemSchema),
 } as const;

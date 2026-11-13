@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { chatBanEnd, chatBlock, kstDayStart, sanctionEnd, sanctionRefusal, summarize } from "./moderation.ts";
+import { broadcastDuration, chatBanEnd, chatBlock, kstDayStart, kstMonthStartOf, reportGroupStatus, sanctionEnd, sanctionRefusal, summarize } from "./moderation.ts";
 
 const t0 = new Date("2026-11-12T00:00:00Z");
 const day = (n: number) => new Date(t0.getTime() + n * 86_400_000);
@@ -65,4 +65,24 @@ test("테스트 운영자는 시드 계정 중 보호 대상이 아닌 것만 �
 test("신고 하루 한도는 한국 시간 0시부터 센다", () => {
   assert.deepEqual(kstDayStart(new Date("2026-11-12T14:59:00Z")), new Date("2026-11-11T15:00:00Z"));
   assert.deepEqual(kstDayStart(new Date("2026-11-12T15:00:00Z")), new Date("2026-11-12T15:00:00Z"));
+});
+
+test("이번 달 시작은 한국 시간 1일 0시다", () => {
+  assert.deepEqual(kstMonthStartOf(new Date("2026-11-12T00:00:00Z")), new Date("2026-10-31T15:00:00Z"));
+  assert.deepEqual(kstMonthStartOf(new Date("2026-10-31T16:00:00Z")), new Date("2026-10-31T15:00:00Z")); // 한국은 이미 11월 1일 1시
+});
+
+test("방송 시간 합계: 방송 중이면 지금까지, 시작 전이면 0", () => {
+  const now = new Date("2026-11-12T01:00:00Z");
+  const rows = [
+    { startedAt: new Date("2026-11-12T00:00:00Z"), endedAt: new Date("2026-11-12T00:30:00Z") },
+    { startedAt: new Date("2026-11-12T00:40:00Z"), endedAt: null },
+    { startedAt: null, endedAt: null },
+  ];
+  assert.equal(broadcastDuration(rows, now), 50 * 60_000);
+});
+
+test("신고 묶음 상태: 접수가 남아 있으면 접수, 아니면 가장 최근 결과", () => {
+  assert.equal(reportGroupStatus([{ status: "dismissed" }, { status: "pending" }]), "pending");
+  assert.equal(reportGroupStatus([{ status: "dismissed" }, { status: "actioned" }]), "dismissed");
 });

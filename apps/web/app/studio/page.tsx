@@ -236,6 +236,7 @@ function DonationTable({ items, showTitle }: { items: StudioDonation[]; showTitl
           <tr>
             {showTitle && <th className="px-3 py-2">방송</th>}
             <th className="px-3 py-2">후원자</th>
+            <th className="px-3 py-2">종류</th>
             <th className="px-3 py-2">꿀</th>
             <th className="px-3 py-2">배분 비율</th>
             <th className="px-3 py-2">예상 수익</th>
@@ -247,6 +248,7 @@ function DonationTable({ items, showTitle }: { items: StudioDonation[]; showTitl
             <tr key={d.id}>
               {showTitle && <td className="px-3 py-2">{d.broadcastTitle}</td>}
               <td className="px-3 py-2">{d.donor}</td>
+              <td className="px-3 py-2">{d.kind === "chat" ? "채팅" : d.missionStatus === "success" ? "미션 성공" : "미션 실패(응원금)"}</td>
               <td className="px-3 py-2">{honey(d.delivered)}</td>
               <td className="px-3 py-2">{Math.round(d.shareRate * 100)}%</td>
               <td className="px-3 py-2">{won(d.earning)}</td>
@@ -256,7 +258,7 @@ function DonationTable({ items, showTitle }: { items: StudioDonation[]; showTitl
         </tbody>
         <tfoot className="border-t border-line text-number-16">
           <tr>
-            <td className="px-3 py-2" colSpan={showTitle ? 2 : 1}>합계</td>
+            <td className="px-3 py-2" colSpan={showTitle ? 3 : 2}>합계</td>
             <td className="px-3 py-2">{honey(sum)}</td>
             <td />
             <td className="px-3 py-2">{won(earn)}</td>

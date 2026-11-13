@@ -19,6 +19,7 @@ import {
   summarize,
   testRunMessage,
   testSettlementId,
+  UNPAID,
 } from "../domain/settlement.ts";
 import { settlementHeld, settlementPaid } from "../domain/notification.ts";
 import { conflict, forbidden, notFound } from "../errors.ts";
@@ -73,6 +74,29 @@ export async function calculateSettlement(uid: string, from: Date | null, to: Da
   return summarize(snap.docs.map((d) => d.data() as DonationDoc).filter(countable).map(rowOf));
 }
 
+/** 받지 못한 수익 배분금(4-11): 지급 대기·보류·지급 실패 기록의 지급액과, 아직 정산하지 않은 확정 후원의 방송자 몫. 다음 지급일과 함께 돌려준다. */
+export async function unpaidEarnings(uid: string, now: Date) {
+  const [open, rest] = await Promise.all([settlementsCol().where("streamerId", "==", uid).where("status", "in", [...UNPAID]).get(), calculateSettlement(uid, null, now)]);
+  return { amount: open.docs.reduce((s, d) => s + (d.data() as SettlementDoc).payout, 0) + rest.streamerShare, payoutDate: nearestPayoutDate(now) };
+}
+
+/** 송금 중인 정산 기록이 있는가. 결과가 나오기 전에는 포기로 바꾸지 않는다. */
+export async function hasSendingSettlement(uid: string) {
+  return !(await settlementsCol().where("streamerId", "==", uid).where("status", "==", "sending").limit(1).get()).empty;
+}
+
+/** 탈퇴 포기(4-11): 받지 못한 정산 기록은 "포기"로, 그 기록에 든 후원과 아직 정산하지 않은 후원은 abandoned로 표시한다. */
+export async function abandonEarnings(uid: string) {
+  const w = db().bulkWriter();
+  const open = await settlementsCol().where("streamerId", "==", uid).where("status", "in", [...UNPAID]).get();
+  for (const s of open.docs) {
+    void w.update(s.ref, { status: "abandoned" satisfies SettlementStatus });
+    for (const d of (await donationsCol().where("settlementId", "==", s.id).get()).docs) void w.update(d.ref, { abandoned: true });
+  }
+  for (const d of (await donationsCol().where("streamerId", "==", uid).where("settlementId", "==", null).get()).docs) void w.update(d.ref, { abandoned: true });
+  await w.close();
+}
+
 type Plan = {
   mode: "scheduled" | "test";
   from: Date | null;
@@ -82,6 +106,17 @@ type Plan = {
   payoutDate: Date;
   idOf: (uid: string, seq: number) => string;
 };
+
+/** 방송자의 "지급 대기"·"보류(정산 정보 없음)" 기록을 "보류(운영 조치)"로 바꾼다. 바꾼 개수를 돌려준다(4-12). */
+export async function holdOpenSettlements(uid: string, reason: string, heldBy: string) {
+  const open = await settlementsCol().where("streamerId", "==", uid).where("status", "in", ["pending", "heldNoAccount"]).get();
+  for (const part of chunk(open.docs, 400)) {
+    const batch = db().batch();
+    part.forEach((d) => batch.update(d.ref, { status: "heldAdmin" satisfies SettlementStatus, holdReason: reason, heldBy }));
+    await batch.commit();
+  }
+  return open.size;
+}
 
 export function settlementUseCases(transfer: TransferPort) {
   /** 정산 확정 한 덩어리(4-12). 같은 ID가 있으면 아무것도 하지 않는다. */
@@ -380,10 +415,9 @@ export function settlementUseCases(transfer: TransferPort) {
       if (refusal === "NOT_SEED") throw forbidden(TEST_ADMIN_SCOPE_MESSAGE);
       if (refusal === "PROTECTED_TEST") throw forbidden(TEST_ACCOUNT_PROTECTED_MESSAGE);
       await usersCol().doc(uid).update({ settlementHold: true, settlementHoldReason: reason, settlementHeldBy: admin.uid });
-      const open = await settlementsCol().where("streamerId", "==", uid).where("status", "in", ["pending", "heldNoAccount"]).get();
-      await updateAll(open.docs.map((d) => d.ref), { status: "heldAdmin" satisfies SettlementStatus, holdReason: reason, heldBy: admin.uid });
-      if (open.size) await notify(uid, settlementHeld(reason, null));
-      await adminLog(admin, { action: "정산 보류", targetType: "user", targetId: uid, targetNickname: target.nickname, targetSeed: !!target.seedKind, reason, before: "보류 없음", after: `보류(기록 ${open.size}건)` });
+      const count = await holdOpenSettlements(uid, reason, admin.uid);
+      if (count) await notify(uid, settlementHeld(reason, null));
+      await adminLog(admin, { action: "정산 보류", targetType: "user", targetId: uid, targetNickname: target.nickname, targetSeed: !!target.seedKind, reason, before: "보류 없음", after: `보류(기록 ${count}건)` });
     },
 
     /** 보류 해제. "보류(운영 조치)" 기록은 "지급 대기"로 돌아가고 다음 실행에서 지급한다. */

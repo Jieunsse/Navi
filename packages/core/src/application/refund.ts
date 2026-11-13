@@ -12,7 +12,7 @@ import type { RefundDoc } from "./honey.ts";
 
 /** 송금 목업(결정 22). 실제 송금을 붙일 때 이 함수만 바꾼다. 정산 송금 목업과 같은 모양이다. */
 export type PayoutFn = (refundId: string, amount: number) => Promise<{ transferId: string; mock: boolean }>;
-export const mockPayout: PayoutFn = async (refundId) => ({ transferId: `mock_${refundId}`, mock: true });
+export const mockPayout: PayoutFn = async (refundId) => ({ transferId: `MOCK-${refundId}`, mock: true });
 
 const refunds = () => db().collection("refunds");
 const isTest = (v: Viewer) => !!v.user.isTestAdmin;

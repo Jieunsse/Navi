@@ -311,6 +311,10 @@ pnpm seed --target=production    # 배포 환경. Firebase 프로젝트 이름�
 - 다시보기 예시 영상 3개는 `ffmpeg`로 만든 테스트 화면입니다. `ffmpeg`가 없으면 영상 없이 녹화 기록만 만들어지고 재생은 되지 않습니다(`brew install ffmpeg`). 올릴 저장소는 `STORAGE_*` 환경 변수의 값입니다.
 - 방송 중 목록은 채우지 않습니다. 방송을 직접 켜는 것부터 확인합니다.
 
+### 운영자 표시 붙이기
+
+실제 계정을 운영자로 만들려면 가입을 마친 뒤 `pnpm grant-admin 이메일주소`를 실행합니다. 떼려면 `--revoke`, 배포 환경이면 `--target=production`을 붙입니다.
+
 ### 테스트 계정 버튼
 
 `http://localhost:3000/login` 아래쪽의 "테스트 방송자 / 시청자 / 운영자로 로그인" 버튼을 누르면 비밀번호 없이 로그인됩니다.

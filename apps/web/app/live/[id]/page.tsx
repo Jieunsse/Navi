@@ -7,6 +7,7 @@ import { Room, RoomEvent, Track } from "livekit-client";
 import { useBroadcastDoc } from "@/entities/broadcast/model";
 import { loginHref, useSession } from "@/entities/session/session";
 import { ChatPanel } from "@/features/chat/ChatPanel";
+import { useBroadcastAccess } from "@/features/chat/useBroadcastAccess";
 import { DonationSheet } from "@/features/donation/DonationSheet";
 import { ReplayButton } from "@/features/replay/ReplayButton";
 import { ReportSheet } from "@/features/moderation/ReportSheet";
@@ -24,6 +25,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   const [donateOpen, setDonateOpen] = useState(useSearchParams().get("donate") === "1");
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const access = useBroadcastAccess(id, me?.uid);
 
   if (b === undefined) return null;
   if (b === null) return <EmptyState title="방송을 찾을 수 없어요" action={<Link href="/" className={buttonCls({ variant: "secondary" })}>홈으로</Link>} />;
@@ -34,7 +36,12 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
   return (
     <div className="flex flex-1 flex-col lg:h-[calc(100dvh-var(--size-header))] lg:flex-row lg:overflow-hidden">
       <div className="flex min-w-0 flex-col gap-4 pb-4 lg:flex-1 lg:overflow-y-auto lg:p-6">
-        {b.status === "ended" ? (
+        {access?.ownerBroadcastBanned ? (
+          <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 bg-screen px-4 text-center lg:rounded-md">
+            <p className="text-heading-20 text-on-video">이 방송자는 운영정책 위반으로 일시적으로 방송할 수 없어요</p>
+            {b.status === "ended" && <ReplayButton broadcastId={id} />}
+          </div>
+        ) : b.status === "ended" ? (
           <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 bg-screen text-center lg:rounded-md">
             <p className="text-heading-20 text-on-video">방송이 끝났어요</p>
             <div className="flex gap-2">
@@ -99,6 +106,7 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
           donationTotal={b.donationTotal}
           onDonate={b.status === "ended" ? undefined : donate}
           donateBlockedReason={own ? "내 방송에는 후원할 수 없어요" : undefined}
+          blockedReason={access?.chatBlock}
         />
       </div>
     </div>

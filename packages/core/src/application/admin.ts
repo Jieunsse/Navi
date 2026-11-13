@@ -9,15 +9,17 @@ import {
   type sanctionInputSchema,
 } from "@nabi/shared/moderation.ts";
 import type { z } from "zod";
-import type { Query } from "firebase-admin/firestore";
+import { AggregateField, type Query } from "firebase-admin/firestore";
 import { adminAuth, db, iso, Timestamp } from "../adapters/firebase.ts";
 import type { LiveKitPort } from "../adapters/livekit.ts";
-import { inTestAdminScope, kstDayStart, sanctionEnd, sanctionRefusal, summarize } from "../domain/moderation.ts";
+import { broadcastDuration, inTestAdminScope, kstDayStart, kstMonthStartOf, reportGroupStatus, sanctionEnd, sanctionRefusal, summarize } from "../domain/moderation.ts";
+import { usageMonth } from "../domain/recording.ts";
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
 import { operatorAction, reportResolved } from "../domain/notification.ts";
 import { requireUser, type UserDoc, type Viewer } from "./auth.ts";
 import { notify, writeNotification } from "./notification.ts";
 import { recordingRef } from "./recording.ts";
+import { holdOpenSettlements } from "./settlement.ts";
 import { reportLabel, toSanctionItem, type ReportDoc, type SanctionDoc, type SummaryDoc } from "./moderation.ts";
 
 type FullUser = UserDoc & SummaryDoc;
@@ -121,7 +123,9 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
       // 계정을 끄고 로그인 토큰을 무효로 만든다. 정산 보류는 해제해도 따로 풀어야 한다(4-15).
       await adminAuth().updateUser(uid, { disabled: true });
       await adminAuth().revokeRefreshTokens(uid);
-      await users().doc(uid).update({ settlementHold: true, settlementHoldReason: "운영 조치(영구 정지)" });
+      const holdReason = "운영 조치(영구 정지)";
+      await users().doc(uid).update({ settlementHold: true, settlementHoldReason: holdReason, settlementHeldBy: admin.uid });
+      await holdOpenSettlements(uid, holdReason, admin.uid); // 이미 있는 지급 대기 기록도 보류로 바꾼다(4-12)
     }
     await log(admin, {
       action: `제재: ${SANCTION_LABEL[input.kind]}${input.days ? ` ${input.days}일` : ""}`,
@@ -161,19 +165,34 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
 
   return {
     async dashboard(admin: Viewer) {
-      const today = Timestamp.fromDate(kstDayStart(new Date()));
+      const nowDate = new Date();
+      const today = Timestamp.fromDate(kstDayStart(nowDate));
       const bs = () => db().collection("broadcasts");
       const count = async (q: Query) => (await q.count().get()).data().count;
-      const [broadcastsToday, liveNow, pendingReports, pendingRefunds, pendingAppeals, donations] = await Promise.all([
+      const [broadcastsToday, liveNow, pendingReports, pendingRefunds, pendingAppeals, donations, usage, monthBroadcasts] = await Promise.all([
         count(bs().where("createdAt", ">=", today)),
         count(bs().where("status", "==", "live")),
         count(db().collection("reports").where("status", "==", "pending")),
         count(db().collection("refunds").where("status", "in", ["pending", "failed"])),
         count(db().collection("appeals").where("status", "==", "pending")),
         db().collection("donations").where("createdAt", ">=", today).get(),
+        db().collection("usage").doc(usageMonth(nowDate)).get(),
+        bs().where("startedAt", ">=", Timestamp.fromDate(kstMonthStartOf(nowDate))).get(),
       ]);
-      const donationToday = donations.docs.reduce((n, d) => n + ((d.data().amount as number | undefined) ?? 0), 0);
-      return { isTestAdmin: isTest(admin), broadcastsToday, liveNow, donationToday, pendingReports, pendingRefunds, pendingAppeals };
+      // 후원 합계는 요청 금액이 아니라 실제로 전달된 꿀이다. 나비 몫은 전달된 꿀에서 방송자 몫을 뺀 값이다.
+      let donationToday = 0;
+      let nabiShareToday = 0;
+      for (const d of donations.docs) {
+        const x = d.data() as { delivered?: number; streamerEarning?: number };
+        donationToday += x.delivered ?? 0;
+        nabiShareToday += (x.delivered ?? 0) - (x.streamerEarning ?? 0);
+      }
+      const broadcastMsThisMonth = broadcastDuration(
+        monthBroadcasts.docs.map((d) => ({ startedAt: when(d.data().startedAt as Timestamp | null), endedAt: when(d.data().endedAt as Timestamp | null) })),
+        nowDate,
+      );
+      const recordedMsThisMonth = (usage.data()?.usedMs as number | undefined) ?? 0;
+      return { isTestAdmin: isTest(admin), broadcastsToday, liveNow, donationToday, nabiShareToday, pendingReports, pendingRefunds, pendingAppeals, recordedMsThisMonth, broadcastMsThisMonth };
     },
 
     /** 신고를 대상 사용자별로 묶는다(4-15). */
@@ -197,7 +216,7 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
           count: rows.length,
           latestReason: rows[0]!.r.reason,
           firstAt: iso(rows[rows.length - 1]!.r.createdAt)!,
-          status: rows.some((x) => x.r.status === "pending") ? ("pending" as const) : ("done" as const),
+          status: reportGroupStatus(rows.map((x) => x.r)),
         };
       });
     },
@@ -280,7 +299,8 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
 
     async users(admin: Viewer) {
       const snap = await users().orderBy("nickname").limit(300).get();
-      return snap.docs.map((d) => ({ uid: d.id, u: d.data() as FullUser })).filter((x) => !isTest(admin) || x.u.seedKind).map((x) => toBrief(x.uid, x.u, admin));
+      // 테스트 운영자에게도 실제 사용자 줄은 빼지 않고 "심사용이 아닌 계정"으로 가려서 보여준다(4-15).
+      return snap.docs.map((d) => toBrief(d.id, d.data() as FullUser, admin));
     },
 
     async userDetail(admin: Viewer, uid: string) {
@@ -291,7 +311,41 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
         db().collection("reports").where("targetUserId", "==", uid).count().get(),
       ]);
       const now = new Date();
-      return { user: toBrief(uid, user, admin), sanctions: sanc.docs.map((d) => toSanctionItem(d.id, d.data() as SanctionDoc, now)), reportCount: reports.data().count };
+      const [wallet, identity, account, received, same] = await Promise.all([
+        db().collection("wallets").doc(uid).get(),
+        db().collection("identityVerifications").doc(uid).get(),
+        db().collection("payoutAccounts").doc(uid).get(),
+        db().collection("donations").where("streamerId", "==", uid).aggregate({ count: AggregateField.count(), honey: AggregateField.sum("delivered") }).get(),
+        db().collection("donations").where("streamerId", "==", uid).where("sameIdentity", "==", true).limit(20).get(),
+      ]);
+      const extra = {
+        honeyBalance: (wallet.data()?.balance as number | undefined) ?? 0,
+        receivedDonationCount: received.data().count,
+        receivedHoney: received.data().honey ?? 0,
+        hasPayoutAccount: account.exists,
+        identityVerified: identity.exists,
+        settlementHold: !!(user as { settlementHold?: boolean }).settlementHold,
+        sameIdentityDonations: same.docs.map((d) => {
+          const x = d.data();
+          return { id: d.id, amount: (x.amount as number | undefined) ?? 0, broadcastTitle: (x.broadcastTitle as string | undefined) ?? "", createdAt: iso(x.createdAt as Timestamp)! };
+        }),
+      };
+      return { user: toBrief(uid, user, admin), sanctions: sanc.docs.map((d) => toSanctionItem(d.id, d.data() as SanctionDoc, now)), reportCount: reports.data().count, extra };
+    },
+
+    /** 전체 제재 목록(O-6). 테스트 운영자에게는 실제 사용자 이름을 가린다(4-15). */
+    async sanctionList(admin: Viewer) {
+      const snap = await sanctions().orderBy("startAt", "desc").limit(200).get();
+      const ids = [...new Set(snap.docs.map((d) => (d.data() as SanctionDoc).userId))];
+      const docs = ids.length ? await db().getAll(...ids.map((id) => users().doc(id))) : [];
+      const who = new Map(docs.map((u) => [u.id, u.data() as FullUser | undefined]));
+      const now = new Date();
+      return snap.docs.map((d) => {
+        const s = d.data() as SanctionDoc;
+        const u = who.get(s.userId);
+        const masked = isTest(admin) && !inTestAdminScope(u?.seedKind);
+        return { ...toSanctionItem(d.id, s, now), userId: s.userId, userNickname: masked ? MASKED_NICKNAME : (u?.nickname ?? "(탈퇴한 사용자)"), masked };
+      });
     },
 
     sanction: (admin: Viewer, uid: string, input: z.output<typeof sanctionInputSchema>) => applySanction(admin, uid, input, null),

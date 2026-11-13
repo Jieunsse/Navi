@@ -24,10 +24,25 @@ export const myDonationSchema = z.object({
 });
 export type MyDonation = z.infer<typeof myDonationSchema>;
 
+/** 탈퇴 전 확인 창에 보여줄 것: 남은 꿀과 받지 못한 수익 배분금(4-8, 4-11) */
+export const withdrawPreviewSchema = z.object({
+  honey: z.object({
+    balance: z.number(), // 포기하게 되는 남은 꿀 전부
+    refundable: z.number(), // 환급 신청할 수 있는 꿀
+    payout: z.number(), // 그 꿀의 환급 받을 금액
+    cancelableHoney: z.number(), // 충전 취소로 전액 돌려받을 수 있는 꿀
+  }),
+  earnings: z.object({ amount: z.number(), payoutDate: z.iso.datetime() }), // 받지 못한 수익 배분금과 다음 지급일
+});
+export type WithdrawPreview = z.infer<typeof withdrawPreviewSchema>;
+
+export const withdrawInputSchema = z.object({ abandonHoney: z.boolean().default(false), abandonEarnings: z.boolean().default(false) });
+
 export const accountApi = {
   signupGoogle: c("POST", "/api/auth/signup-google", z.object({ nickname: nicknameSchema, agreements: agreementsSchema }), ok),
   profile: c("GET", "/api/me/profile", none, z.object({ nicknameChanged: z.boolean() })),
   changeNickname: c("PATCH", "/api/me/nickname", z.object({ nickname: nicknameSchema }), ok),
   myDonations: c("GET", "/api/me/donations", none, z.object({ items: z.array(myDonationSchema), total: z.number() })),
-  withdraw: c("POST", "/api/me/withdraw", none, ok),
+  withdrawPreview: c("GET", "/api/me/withdraw", none, withdrawPreviewSchema),
+  withdraw: c("POST", "/api/me/withdraw", withdrawInputSchema, ok),
 } as const;

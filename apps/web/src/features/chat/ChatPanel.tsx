@@ -27,6 +27,8 @@ type Props = {
   hideHeader?: boolean;
   /** 제목줄 글자(기본 "채팅"). */
   title?: string;
+  /** 들어올 때 이미 채팅이 막힌 사용자에게 처음부터 보여줄 안내(4-14). */
+  blockedReason?: string | null;
 };
 
 const KEEP = 300; // 화면에 들고 있는 최대 개수
@@ -61,14 +63,15 @@ const store = {
 
 const iso = (v: unknown) => (v instanceof Timestamp ? v.toDate().toISOString() : v == null ? undefined : String(v));
 
-export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donateBlockedReason, donationTotal, inputClassName, hideHeader, title = "채팅" }: Props) {
+export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donateBlockedReason, donationTotal, inputClassName, hideHeader, title = "채팅", blockedReason }: Props) {
   const { me } = useSession();
   const router = useRouter();
   const [items, setItems] = useState<Map<string, ChatItem>>(new Map());
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [blocked, setBlocked] = useState<string | null>(null); // 채팅 금지, 활동 제한이면 서버가 준 안내
+  const [sentBlocked, setBlocked] = useState<string | null>(null); // 채팅 금지, 활동 제한이면 서버가 준 안내
+  const blocked = sentBlocked ?? blockedReason ?? null;
   const [picked, setPicked] = useState<ChatItem | null>(null);
   const textRef = useRef(""); // 보내는 동안 새로 친 글자를 지우지 않으려고 최신 값을 따로 들고 있다
   const pending = useRef<{ id: string; content: string } | null>(null); // 네트워크 실패 뒤 같은 번호로 다시 보내려고 기억한다

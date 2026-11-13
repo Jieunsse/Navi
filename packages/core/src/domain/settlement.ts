@@ -62,6 +62,9 @@ export function chunk<T>(rows: readonly T[], size = SETTLEMENT_CHUNK): T[][] {
 /** 지급 대상으로 모으는 상태(4-12). 운영 조치 보류는 모으지 않는다. */
 export const COLLECTABLE = ["pending", "heldNoAccount", "failed"] as const;
 
+/** 방송자가 아직 받지 못한 정산 기록의 상태. 탈퇴할 때 "포기"가 된다(4-11). */
+export const UNPAID = ["pending", "heldNoAccount", "heldAdmin", "failed"] as const;
+
 /** 월 정산 테스트 실행 결과 문구(4-12, 06 결정 28) */
 export function testRunMessage(r: { newDonations: number; newShare: number; paidCount: number; heldCount: number }) {
   const n = (v: number) => v.toLocaleString("ko-KR");

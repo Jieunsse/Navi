@@ -830,6 +830,99 @@
         }
       }
     },
+    "/api/broadcasts/{id}/access": {
+      "get": {
+        "operationId": "broadcastAccess",
+        "tags": [
+          "chat"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ownerBroadcastBanned": {
+                      "type": "boolean"
+                    },
+                    "chatBlock": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ownerBroadcastBanned",
+                    "chatBlock"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/broadcasts/{id}/authors/{userId}/example": {
+      "get": {
+        "operationId": "authorExample",
+        "tags": [
+          "chat"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "example": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "example"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/broadcasts/{id}/chat": {
       "post": {
         "operationId": "sendChat",
@@ -1208,6 +1301,73 @@
       }
     },
     "/api/me/withdraw": {
+      "get": {
+        "operationId": "withdrawPreview",
+        "tags": [
+          "account"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "honey": {
+                      "type": "object",
+                      "properties": {
+                        "balance": {
+                          "type": "number"
+                        },
+                        "refundable": {
+                          "type": "number"
+                        },
+                        "payout": {
+                          "type": "number"
+                        },
+                        "cancelableHoney": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "balance",
+                        "refundable",
+                        "payout",
+                        "cancelableHoney"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "earnings": {
+                      "type": "object",
+                      "properties": {
+                        "amount": {
+                          "type": "number"
+                        },
+                        "payoutDate": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "amount",
+                        "payoutDate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "honey",
+                    "earnings"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "withdraw",
         "tags": [
@@ -1219,7 +1379,16 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {}
+                "properties": {
+                  "abandonHoney": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "abandonEarnings": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                }
               }
             }
           }
@@ -1729,6 +1898,12 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "cancelBlockedReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -1739,7 +1914,8 @@
                           "status",
                           "createdAt",
                           "cancelable",
-                          "cancelableUntil"
+                          "cancelableUntil",
+                          "cancelBlockedReason"
                         ],
                         "additionalProperties": false
                       }
@@ -3169,6 +3345,9 @@
                     "donationToday": {
                       "type": "number"
                     },
+                    "nabiShareToday": {
+                      "type": "number"
+                    },
                     "pendingReports": {
                       "type": "number"
                     },
@@ -3177,6 +3356,12 @@
                     },
                     "pendingAppeals": {
                       "type": "number"
+                    },
+                    "recordedMsThisMonth": {
+                      "type": "number"
+                    },
+                    "broadcastMsThisMonth": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -3184,9 +3369,12 @@
                     "broadcastsToday",
                     "liveNow",
                     "donationToday",
+                    "nabiShareToday",
                     "pendingReports",
                     "pendingRefunds",
-                    "pendingAppeals"
+                    "pendingAppeals",
+                    "recordedMsThisMonth",
+                    "broadcastMsThisMonth"
                   ],
                   "additionalProperties": false
                 }
@@ -3245,7 +3433,8 @@
                             "type": "string",
                             "enum": [
                               "pending",
-                              "done"
+                              "actioned",
+                              "dismissed"
                             ]
                           }
                         },
@@ -3888,12 +4077,199 @@
                     },
                     "reportCount": {
                       "type": "number"
+                    },
+                    "extra": {
+                      "type": "object",
+                      "properties": {
+                        "honeyBalance": {
+                          "type": "number"
+                        },
+                        "receivedDonationCount": {
+                          "type": "number"
+                        },
+                        "receivedHoney": {
+                          "type": "number"
+                        },
+                        "hasPayoutAccount": {
+                          "type": "boolean"
+                        },
+                        "identityVerified": {
+                          "type": "boolean"
+                        },
+                        "settlementHold": {
+                          "type": "boolean"
+                        },
+                        "sameIdentityDonations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "amount": {
+                                "type": "number"
+                              },
+                              "broadcastTitle": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "amount",
+                              "broadcastTitle",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "honeyBalance",
+                        "receivedDonationCount",
+                        "receivedHoney",
+                        "hasPayoutAccount",
+                        "identityVerified",
+                        "settlementHold",
+                        "sameIdentityDonations"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "user",
                     "sanctions",
-                    "reportCount"
+                    "reportCount",
+                    "extra"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/sanctions": {
+      "get": {
+        "operationId": "adminSanctions",
+        "tags": [
+          "moderation"
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "warning",
+                              "chatBan",
+                              "broadcastBan",
+                              "suspend"
+                            ]
+                          },
+                          "startAt": {
+                            "type": "string"
+                          },
+                          "endAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "ended",
+                              "revoked",
+                              "appealCanceled"
+                            ]
+                          },
+                          "revokeReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "appeal": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "pending",
+                                      "accepted",
+                                      "rejected"
+                                    ]
+                                  },
+                                  "answer": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "answer"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "userId": {
+                            "type": "string"
+                          },
+                          "userNickname": {
+                            "type": "string"
+                          },
+                          "masked": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "startAt",
+                          "endAt",
+                          "reason",
+                          "status",
+                          "revokeReason",
+                          "userId",
+                          "userNickname",
+                          "masked"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
                   ],
                   "additionalProperties": false
                 }
@@ -4268,6 +4644,10 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "isExample": {
+                            "default": false,
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -4280,7 +4660,8 @@
                           "isPublic",
                           "durationMs",
                           "startedAt",
-                          "endedAt"
+                          "endedAt",
+                          "isExample"
                         ],
                         "additionalProperties": false
                       }
@@ -4373,6 +4754,10 @@
                               "type": "null"
                             }
                           ]
+                        },
+                        "isExample": {
+                          "default": false,
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4385,7 +4770,8 @@
                         "isPublic",
                         "durationMs",
                         "startedAt",
-                        "endedAt"
+                        "endedAt",
+                        "isExample"
                       ],
                       "additionalProperties": false
                     },
@@ -4666,6 +5052,10 @@
                                         "type": "null"
                                       }
                                     ]
+                                  },
+                                  "isExample": {
+                                    "default": false,
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -4678,7 +5068,8 @@
                                   "isPublic",
                                   "durationMs",
                                   "startedAt",
-                                  "endedAt"
+                                  "endedAt",
+                                  "isExample"
                                 ],
                                 "additionalProperties": false
                               },
@@ -4707,6 +5098,27 @@
                                 "donor": {
                                   "type": "string"
                                 },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "chat",
+                                    "mission"
+                                  ]
+                                },
+                                "missionStatus": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "success",
+                                        "failed"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
                                 "amount": {
                                   "type": "number"
                                 },
@@ -4730,6 +5142,8 @@
                                 "broadcastId",
                                 "broadcastTitle",
                                 "donor",
+                                "kind",
+                                "missionStatus",
                                 "amount",
                                 "delivered",
                                 "shareRate",
@@ -4766,6 +5180,27 @@
                           "donor": {
                             "type": "string"
                           },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "chat",
+                              "mission"
+                            ]
+                          },
+                          "missionStatus": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "success",
+                                  "failed"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "amount": {
                             "type": "number"
                           },
@@ -4789,6 +5224,8 @@
                           "broadcastId",
                           "broadcastTitle",
                           "donor",
+                          "kind",
+                          "missionStatus",
                           "amount",
                           "delivered",
                           "shareRate",
@@ -6084,6 +6521,9 @@
                               "null"
                             ]
                           },
+                          "masked": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string"
                           },
@@ -6104,6 +6544,7 @@
                           "amount",
                           "status",
                           "paymentKey",
+                          "masked",
                           "createdAt",
                           "cancelRequestedAt",
                           "stuck"
@@ -6289,6 +6730,15 @@
                               "ended"
                             ]
                           },
+                          "masked": {
+                            "type": "boolean"
+                          },
+                          "replayPublic": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
                           "createdAt": {
                             "type": "string"
                           },
@@ -6310,6 +6760,8 @@
                           "title",
                           "ownerNickname",
                           "status",
+                          "masked",
+                          "replayPublic",
                           "createdAt",
                           "startedAt",
                           "endedAt"
@@ -6332,6 +6784,66 @@
     "/api/admin/broadcasts/{id}/end": {
       "post": {
         "operationId": "forceEndBroadcast",
+        "tags": [
+          "adminOps"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/broadcasts/{id}/private-replay": {
+      "post": {
+        "operationId": "privateReplay",
         "tags": [
           "adminOps"
         ],

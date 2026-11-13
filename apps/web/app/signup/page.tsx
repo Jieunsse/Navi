@@ -54,6 +54,8 @@ function Signup() {
   const nickname = watch("nickname") ?? "";
   const nickVerified = checkedNick !== null && checkedNick === nickname;
   const allAgreed = Object.values(agree).every(Boolean);
+  // 가입 버튼 조건(4-1): 이메일 형식, 비밀번호 6자 이상, 확인 일치, 닉네임 중복 확인, 필수 약관
+  const formOk = formSchema.safeParse(watch()).success;
 
   async function checkNick() {
     if (!(await trigger("nickname"))) return;
@@ -129,7 +131,7 @@ function Signup() {
         </fieldset>
 
         {submitError && <p className="text-caption-12 text-danger">{submitError}</p>}
-        <Button type="submit" size="lg" loading={formState.isSubmitting} disabled={!nickVerified || !allAgreed}>
+        <Button type="submit" size="lg" loading={formState.isSubmitting} disabled={!formOk || !nickVerified || !allAgreed}>
           가입하기
         </Button>
       </form>

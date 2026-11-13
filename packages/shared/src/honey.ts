@@ -164,6 +164,7 @@ export const walletSchema = z.object({
       createdAt: z.iso.datetime(),
       cancelable: z.boolean(),
       cancelableUntil: z.iso.datetime().nullable(),
+      cancelBlockedReason: z.string().nullable(), // 완료된 충전을 취소할 수 없는 이유(4-11)
     }),
   ),
   ledger: z.array(z.object({ id: z.string(), type: z.string(), amount: z.number(), createdAt: z.iso.datetime() })),

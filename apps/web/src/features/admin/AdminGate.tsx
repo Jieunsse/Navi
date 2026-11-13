@@ -19,7 +19,8 @@ export const useAdmin = () => {
 const menus = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/reports", label: "신고 처리" },
-  { href: "/admin/users", label: "회원과 제재" },
+  { href: "/admin/users", label: "회원 관리" },
+  { href: "/admin/sanctions", label: "제재 관리" },
   { href: "/admin/appeals", label: "이의 제기" },
   { href: "/admin/broadcasts", label: "방송 관리" },
   { href: "/admin/refunds", label: "환급 관리" },
@@ -35,7 +36,8 @@ const menus = [
 const menuIcon: Record<string, typeof FlagIcon> = {
   "/admin": LayoutGridIcon,
   "/admin/reports": FlagIcon,
-  "/admin/users": BanIcon,
+  "/admin/users": UserIcon,
+  "/admin/sanctions": BanIcon,
   "/admin/appeals": ScaleIcon,
   "/admin/broadcasts": RadioIcon,
   "/admin/refunds": UsersIcon,

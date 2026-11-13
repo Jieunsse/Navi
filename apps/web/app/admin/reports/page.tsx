@@ -10,12 +10,15 @@ import { apiFetch, ApiError } from "@/shared/api/apiFetch";
 import { formatTime } from "@/shared/lib/format";
 import { Button, cx, Input } from "@/shared/ui";
 
+type Status = keyof typeof REPORT_CHIP;
+const REPORT_CHIP = { pending: "접수", actioned: "조치함", dismissed: "기각" } as const;
 type Groups = ApiRes<typeof moderationApi.adminReports>["items"];
 type Detail = ApiRes<typeof moderationApi.adminReportDetail>;
 
 function AdminReportsPageBody() {
   const [groups, setGroups] = useState<Groups | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Status | "all">("all");
   const loadGroups = useCallback(() => apiFetch(moderationApi.adminReports).then((r) => setGroups(r.items), () => setGroups([])), []);
   useEffect(() => {
     void loadGroups();
@@ -26,8 +29,15 @@ function AdminReportsPageBody() {
       <h1 className="text-heading-28">신고 처리</h1>
       <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6">
         <div className="flex flex-col gap-2">
+          <div className="flex gap-2" role="group" aria-label="신고 상태">
+            {(["all", "pending", "actioned", "dismissed"] as const).map((k) => (
+              <button key={k} aria-pressed={filter === k} onClick={() => setFilter(k)} className={cx("h-8 rounded-full px-3 text-caption-12", filter === k ? "bg-raised text-text" : "bg-surface text-muted hover:bg-hover")}>
+                {k === "all" ? "전체" : REPORT_CHIP[k]}
+              </button>
+            ))}
+          </div>
           {groups?.length === 0 && <p className="text-body-16 text-muted">신고가 없어요</p>}
-          {groups?.map((g) => (
+          {groups?.filter((g) => filter === "all" || g.status === filter).map((g) => (
             <button
               key={g.userId}
               onClick={() => setSelected(g.userId)}
@@ -35,7 +45,7 @@ function AdminReportsPageBody() {
             >
               <span className="flex justify-between">
                 <b>{g.nickname}</b>
-                <span className={g.status === "pending" ? "text-text" : "text-subtle"}>{g.status === "pending" ? "처리 전" : "처리됨"}</span>
+                <span className={g.status === "pending" ? "text-text" : "text-subtle"}>{REPORT_CHIP[g.status]}</span>
               </span>
               <span className="text-caption-12 text-subtle">
                 신고 {g.count}건 · {REPORT_REASONS[g.latestReason]} · {formatTime(g.firstAt)}부터

@@ -213,7 +213,7 @@ export function DonationSheet({ broadcastId, ownerId, status, onClose }: Props) 
             {error && <p className="text-caption-12 text-danger">{error}</p>}
             <div className="h-px bg-line" />
             {mission && !live ? null : lacking ? (
-              <Button size="lg" variant="live" disabled={busy} onClick={startCharge}>충전하고 후원하기</Button>
+              <Button size="lg" variant="live" disabled={busy || !ready} onClick={startCharge}>충전하고 후원하기</Button>
             ) : (
               <Button size="lg" variant="live" loading={busy} disabled={!ready} onClick={donate}>
                 {mission ? "후원하기" : amount >= DONATION_MIN ? `${won(amount)}꿀 후원하기` : "후원하기"}

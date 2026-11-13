@@ -13,6 +13,7 @@
     "emulators": "firebase emulators:start --only auth,firestore --project demo-nabi",
     "livekit": "livekit-server --dev --bind 0.0.0.0 --config livekit.dev.yaml",
     "seed": "pnpm --filter @nabi/core seed",
+    "grant-admin": "pnpm --filter @nabi/core grant-admin",
     "test-token": "pnpm --filter @nabi/core test-token",
     "openapi": "pnpm --filter @nabi/shared openapi"
   },

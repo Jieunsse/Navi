@@ -1,11 +1,13 @@
-import { WITHDRAWN_NICKNAME, type MyDonation } from "@nabi/shared/account.ts";
-import { ACTIVE_REFUND_STATUSES } from "@nabi/shared/honey.ts";
+import { WITHDRAWN_NICKNAME, type MyDonation, type WithdrawPreview } from "@nabi/shared/account.ts";
+import { ACTIVE_REFUND_STATUSES, refundQuote } from "@nabi/shared/honey.ts";
 import { adminAuth, db, iso, Timestamp } from "../adapters/firebase.ts";
-import { isBlockingCharge, isRecentLogin } from "../domain/account.ts";
+import { abandonRefusal, isBlockingCharge, isRecentLogin, sanctionBlocksWithdraw } from "../domain/account.ts";
+import { refundable } from "../domain/refund.ts";
 import { AppError, conflict, forbidden, unauthorized } from "../errors.ts";
 import { assertNicknameAllowed, createUserDocs, nicknameKey } from "./account.ts";
 import type { Viewer } from "./auth.ts";
 import { recordings } from "../container.ts";
+import { abandonEarnings, hasSendingSettlement, unpaidEarnings } from "./settlement.ts";
 
 /** 구글 가입 마무리(4-1). 사용자 문서가 아직 없는 로그인 토큰이라 requireUser를 쓰지 않는다. */
 export async function signupGoogle(authHeader: string | null, nickname: string) {
@@ -65,16 +67,40 @@ export async function myDonations(v: Viewer): Promise<{ items: MyDonation[]; tot
   return { items, total: items.reduce((s, i) => s + i.amount, 0) };
 }
 
+/** 탈퇴 전 확인 창에 보여줄 남은 꿀과 받지 못한 수익 배분금(4-8, 4-11) */
+export async function withdrawPreview(v: Viewer): Promise<WithdrawPreview> {
+  const now = new Date();
+  const [wallet, done, earnings] = await Promise.all([
+    db().collection("wallets").doc(v.uid).get(),
+    db().collection("charges").where("userId", "==", v.uid).where("status", "==", "done").get(),
+    unpaidEarnings(v.uid, now),
+  ]);
+  const r = refundable(
+    done.docs.map((d) => {
+      const c = d.data();
+      return { id: d.id, status: "done", honey: c.honey as number, remaining: c.remaining as number, cancelableUntilMs: (c.cancelableUntil as Timestamp | null)?.toMillis() ?? null };
+    }),
+    now.getTime(),
+  );
+  return {
+    honey: { balance: (wallet.data()?.balance as number | undefined) ?? 0, refundable: r.total, payout: refundQuote(r.total).payout, cancelableHoney: r.cancelable },
+    earnings: { amount: earnings.amount, payoutDate: earnings.payoutDate.toISOString() },
+  };
+}
+
 /**
  * 회원 탈퇴(4-11). 조건 확인 → 계정 정지 → 기록 정리 → 계정 삭제.
  * 기록 정리 중 실패하면 같은 요청을 다시 보내면 된다(바꾸고 지우는 일이라 결과가 같다).
- * 아직 없는 기능(정산)에 걸린 조건은 넣지 않았다.
  */
-export async function withdraw(v: Viewer) {
+export async function withdraw(v: Viewer, agreed: { abandonHoney: boolean; abandonEarnings: boolean } = { abandonHoney: false, abandonEarnings: false }) {
   const fs = db();
   const uid = v.uid;
   if (isSeed(v)) throw forbidden("테스트 계정은 탈퇴할 수 없어요");
   if (!isRecentLogin(v.authTime, Date.now())) throw new AppError(401, "REAUTH_REQUIRED", "비밀번호를 한 번 더 확인해 주세요");
+
+  const user = (await fs.collection("users").doc(uid).get()).data() as { chatBannedUntil?: Timestamp | null; broadcastBannedUntil?: Timestamp | null } | undefined;
+  if (sanctionBlocksWithdraw({ chatBannedUntil: user?.chatBannedUntil?.toDate(), broadcastBannedUntil: user?.broadcastBannedUntil?.toDate() }, new Date()))
+    throw conflict("WITHDRAW_BLOCKED", "제재 기간이 끝난 뒤에 탈퇴할 수 있어요");
 
   const [live, pending, canceling, missions, refunds] = await Promise.all([
     fs.collection("broadcasts").where("ownerId", "==", uid).where("status", "==", "live").limit(1).get(),
@@ -91,12 +117,23 @@ export async function withdraw(v: Viewer) {
   if (pending.docs.some((d) => isBlockingCharge({ status: "pending", createdAtMs: (d.data().createdAt as Timestamp).toMillis() }, Date.now())))
     throw conflict("WITHDRAW_BLOCKED", "결제를 처리하는 중이라 잠시 뒤에 탈퇴할 수 있어요");
 
+  if (await hasSendingSettlement(uid)) throw conflict("WITHDRAW_BLOCKED", "수익 배분금을 보내는 중이라 잠시 뒤에 탈퇴할 수 있어요");
+  // 남은 꿀과 받지 못한 수익 배분금이 있으면 포기에 동의해야 한다(4-8, 4-11)
+  const left = await withdrawPreview(v);
+  const refusal = abandonRefusal({ honey: left.honey.balance, earnings: left.earnings.amount }, agreed);
+  if (refusal) throw conflict(refusal.code, refusal.message);
+
   // 녹화 파일을 먼저 지운다. 처리 중인 녹화가 있으면 여기서 거절된다(4-9).
   for (const r of (await fs.collection("recordings").where("ownerId", "==", uid).get()).docs) await recordings().removeForBroadcast(r.id);
 
   // 정지: 새 채팅, 후원, 방송이 들어오지 않게 한다.
   await adminAuth().updateUser(uid, { disabled: true });
   await adminAuth().revokeRefreshTokens(uid);
+
+  // 동의한 시각을 운영 기록에 남기고(10 약관 제8조 4항), 받지 못한 수익 배분금은 포기로 표시한다.
+  if (left.honey.balance > 0 || left.earnings.amount > 0)
+    await fs.collection("withdrawalAgreements").add({ userId: uid, honey: agreed.abandonHoney ? left.honey.balance : 0, earnings: agreed.abandonEarnings ? left.earnings.amount : 0, agreedAt: Timestamp.now() });
+  if (left.earnings.amount > 0) await abandonEarnings(uid);
 
   const w = fs.bulkWriter();
   const gone = { authorNickname: WITHDRAWN_NICKNAME };
@@ -107,11 +144,17 @@ export async function withdraw(v: Viewer) {
 
   for (const b of (await fs.collection("broadcasts").where("ownerId", "==", uid).get()).docs) await fs.recursiveDelete(b.ref);
 
-  // 남은 꿀은 사라진다(13장). 꿀 내역에 포기로 남긴다.
-  const wallet = await fs.collection("wallets").doc(uid).get();
-  const balance = (wallet.data()?.balance as number | undefined) ?? 0;
-  if (balance > 0) await fs.collection("honeyLedger").add({ userId: uid, type: "withdrawAbandon", amount: -balance, createdAt: Timestamp.now() });
-  await Promise.all([wallet.ref.delete(), fs.collection("identityVerifications").doc(uid).delete(), fs.collection("payoutAccounts").doc(uid).delete()]);
+  // 남은 꿀은 사라진다(13장). 꿀 내역에 포기로 남기고, 충전 건의 남은 꿀도 같은 처리에서 0으로 만든다(4-8).
+  // shortcut: 남은 꿀이 있는 충전 건이 500개 가까이 되면 한 처리에 담기지 않는다. 그럴 일이 생기면 나눠서 처리한다.
+  await fs.runTransaction(async (tx) => {
+    const walletRef = fs.collection("wallets").doc(uid);
+    const [wallet, done] = await Promise.all([tx.get(walletRef), tx.get(fs.collection("charges").where("userId", "==", uid).where("status", "==", "done"))]);
+    const balance = (wallet.data()?.balance as number | undefined) ?? 0;
+    if (balance > 0) tx.create(fs.collection("honeyLedger").doc(), { userId: uid, type: "withdrawAbandon", amount: -balance, createdAt: Timestamp.now() });
+    for (const c of done.docs) if ((c.data().remaining as number) > 0) tx.update(c.ref, { remaining: 0 });
+    if (wallet.exists) tx.delete(walletRef);
+  });
+  await Promise.all([fs.collection("identityVerifications").doc(uid).delete(), fs.collection("payoutAccounts").doc(uid).delete()]);
 
   // 닉네임 문서(붙잡아 둔 옛 닉네임 포함)를 지우고, 사용자 문서는 마지막에 지운다.
   for (const d of (await fs.collection("nicknames").where("uid", "==", uid).get()).docs) await d.ref.delete();

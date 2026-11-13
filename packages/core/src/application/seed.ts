@@ -559,7 +559,7 @@ export function seedUseCases(deps: SeedDeps) {
     async fullReset(adminViewer: Viewer) {
       const last = ((await state().get()).data()?.lastFullResetAt as Timestamp | undefined)?.toMillis();
       if (adminViewer.user.isTestAdmin && last && Date.now() - last < FULL_RESET_INTERVAL_MS) {
-        throw new AppError(429, "RESET_TOO_SOON", `전체 초기화는 10분에 한 번만 할 수 있어요. ${Math.ceil((FULL_RESET_INTERVAL_MS - (Date.now() - last)) / 60_000)}분 뒤에 다시 눌러 주세요`);
+        throw new AppError(429, "RESET_TOO_SOON", "조금 뒤에 다시 초기화할 수 있어요");
       }
       await runReset(adminViewer, "테스트 계정 전체 초기화");
       return { message: "테스트 계정을 처음 상태로 다시 만들었어요" };

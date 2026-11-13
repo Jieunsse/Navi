@@ -208,6 +208,7 @@ export function honeyUseCases(toss: TossPort, lk: LiveKitPort) {
             status: c.status,
             createdAt: iso(c.createdAt)!,
             cancelable: cancelRefusal(candidate(c), nowMs) === null,
+            cancelBlockedReason: c.status === "done" ? cancelRefusal(candidate(c), nowMs) : null,
             cancelableUntil: iso(c.cancelableUntil),
           };
         }),
@@ -378,7 +379,10 @@ export function honeyUseCases(toss: TossPort, lk: LiveKitPort) {
       if (body.eventType !== "PAYMENT_STATUS_CHANGED" || !key) return;
       const p = await toss.get(key).catch((e) => (e instanceof AppError && e.status < 500 ? null : Promise.reject(e))); // 우리 결제가 아니면 무시
       // 주문이 없거나 금액이 다른 알림은 다시 보내 봐야 같으므로 오류로 돌려보내지 않는다.
-      if (p?.status === "DONE") await settle(p).catch((e) => { if (!(e instanceof AppError)) throw e; });
+      if (p?.status === "DONE") {
+        await settle(p).catch((e) => { if (!(e instanceof AppError)) throw e; });
+        await revertCancel(p.orderId); // 우리 충전이 "취소 중"인데 토스는 완료라면 "완료"로 되돌리고 꿀을 돌려준다(4-8). 아니면 아무것도 하지 않는다.
+      }
       // 취소가 끝났다는 알림이고 우리 충전이 "취소 중"이면 "취소"로 끝낸다(7장)
       else if (p?.status === "CANCELED") await finishCancel(p.orderId);
     },

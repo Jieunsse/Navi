@@ -28,6 +28,7 @@ export const recordingSchema = z.object({
   durationMs: z.number().nullable(),
   startedAt: z.iso.datetime(),
   endedAt: z.iso.datetime().nullable(),
+  isExample: z.boolean().default(false), // 시드 다시보기는 화면에 "예시"를 붙인다(4-18)
 });
 export type Recording = z.infer<typeof recordingSchema>;
 
@@ -37,6 +38,8 @@ export const studioDonationSchema = z.object({
   broadcastId: z.string(),
   broadcastTitle: z.string(),
   donor: z.string(),
+  kind: z.enum(["chat", "mission"]),
+  missionStatus: z.enum(["success", "failed"]).nullable(), // 확정된 미션만(성공=상금, 실패=응원금)
   amount: z.number(),
   delivered: z.number(),
   shareRate: z.number(), // 0.8 같은 값

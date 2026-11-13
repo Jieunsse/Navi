@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test --experimental-strip-types src/**/*.test.ts",
     "seed": "tsx --env-file-if-exists=../../apps/web/.env.local scripts/seed.ts",
+    "grant-admin": "tsx --env-file-if-exists=../../apps/web/.env.local scripts/grant-admin.ts",
     "test-token": "tsx --env-file-if-exists=../../apps/web/.env.local scripts/test-token.ts",
     "check-recording": "tsx --env-file-if-exists=../../apps/web/.env.local scripts/check-recording.ts"
   },

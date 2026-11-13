@@ -1,5 +1,5 @@
 "use client";
-import { CHARGE_MAX, CHARGE_MIN, CHARGE_STEP, CHARGE_UNITS, HONEY_NOTICE_VERSION, honeyApi, payAmount, type Wallet } from "@nabi/shared/honey.ts";
+import { CHARGE_MAX, CHARGE_MIN, CHARGE_STEP, CHARGE_UNITS, DAILY_CHARGE_LIMIT, HONEY_NOTICE_VERSION, honeyApi, payAmount, type Wallet } from "@nabi/shared/honey.ts";
 import { ANONYMOUS, loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { useState } from "react";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
@@ -118,7 +118,7 @@ export function ChargeBox({ wallet, reload, returnTo, initialHoney, donation, su
         <div className="flex justify-between"><span className="text-muted">부가가치세 10%</span><span className="text-number-16">{valid ? won(pay_ - honey) : "-"}원</span></div>
         <div className="flex items-center justify-between"><span>결제 금액</span><span className="text-heading-20 text-live-ink">{valid ? won(pay_) : "-"}원</span></div>
       </div>
-      <p className="text-caption-12 text-subtle">오늘 남은 충전 한도는 {won(wallet.todayRemaining)}꿀이에요</p>
+      <p className="text-caption-12 text-subtle">오늘은 {won(DAILY_CHARGE_LIMIT)}꿀까지 충전할 수 있어요. 남은 한도는 {won(wallet.todayRemaining)}꿀이에요</p>
       {donation && valid && <p className="text-caption-12 text-muted">결제가 끝나면 {won(donated)}꿀이 바로 후원되고, 남은 {won(Math.max(0, wallet.balance + honey - donated))}꿀은 내 꿀에 남아요</p>}
       {valid && overLimit && <p className="text-caption-12 text-danger">남은 한도를 넘었어요</p>}
       {blockedAdult && <p className="text-caption-12 text-danger">만 19세 이상만 꿀을 충전할 수 있어요</p>}

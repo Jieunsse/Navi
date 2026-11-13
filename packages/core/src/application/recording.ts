@@ -20,6 +20,7 @@ type RecDoc = {
   startedAt: Timestamp;
   endedAt: Timestamp | null;
   stopRequested: boolean;
+  seedData?: boolean;
   failReason?: "quota" | "error" | "egress";
 };
 
@@ -41,6 +42,7 @@ function toRecording(id: string, d: RecDoc): Recording {
     durationMs: d.durationMs,
     startedAt: iso(d.startedAt)!,
     endedAt: iso(d.endedAt),
+    isExample: !!d.seedData,
   };
 }
 
@@ -255,13 +257,16 @@ export function recordingUseCases(egress: EgressPort, storage: StoragePort) {
       const recSnaps = recIds.length ? await db().getAll(...recIds.map(recordingRef)) : [];
       const recs = new Map(recSnaps.filter((s) => s.exists).map((s) => [s.id, toRecording(s.id, s.data() as RecDoc)]));
 
-      const donations = dSnap.docs.map((d): StudioDonation => {
+      // 확정되지 않은 미션(대기 중, 거절, 취소)은 방송자에게 간 꿀이 없어 내역에 넣지 않는다(4-8).
+      const donations = dSnap.docs.filter((d) => (d.data().delivered ?? 0) > 0).map((d): StudioDonation => {
         const x = d.data();
         return {
           id: d.id,
           broadcastId: x.broadcastId,
           broadcastTitle: x.broadcastTitle ?? "",
           donor: x.anonymous ? "익명" : (x.donorNickname ?? ""),
+          kind: x.kind === "mission" ? "mission" : "chat",
+          missionStatus: x.kind === "mission" ? (x.missionStatus === "success" ? "success" : "failed") : null,
           amount: x.amount ?? 0,
           delivered: x.delivered ?? 0,
           shareRate: x.shareRate ?? 0,

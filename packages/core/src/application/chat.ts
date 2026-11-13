@@ -4,6 +4,7 @@ import { chatItemSchema, type ChatItem } from "@nabi/shared/chat.ts";
 import { db, iso, Timestamp } from "../adapters/firebase.ts";
 import type { LiveKitPort } from "../adapters/livekit.ts";
 import { tooFast } from "../domain/chat.ts";
+import { stillBlocked } from "../domain/moderation.ts";
 import { AppError, conflict, notFound } from "../errors.ts";
 import type { Viewer } from "./auth.ts";
 import { assertCanChat } from "./moderation.ts";
@@ -27,6 +28,30 @@ const toItem = (d: CommentDoc): ChatItem =>
 /** enforceTestLimit은 broadcast 유스케이스의 것을 그대로 받는다(테스트 방송자 30분 제한). */
 export function chatUseCases(livekit: LiveKitPort, enforceTestLimit: (broadcastId: string) => Promise<boolean>) {
   return {
+    /**
+     * 방송 보기 화면이 처음 열릴 때 묻는다(4-14, 4-15). 방송자의 방송 금지 여부(참/거짓)와,
+     * 로그인한 본인이 채팅을 쓸 수 없을 때의 안내만 준다. 다른 사람의 제재 내용은 내보내지 않는다.
+     */
+    async access(uid: string | null, broadcastId: string) {
+      const bsnap = await db().collection("broadcasts").doc(broadcastId).get();
+      if (!bsnap.exists) throw notFound();
+      const ownerId = (bsnap.data() as { ownerId: string }).ownerId;
+      const owner = (await db().collection("users").doc(ownerId).get()).data() as { broadcastBannedUntil?: Timestamp | null } | undefined;
+      const chatBlock = uid
+        ? await assertCanChat(uid, ownerId).then(
+            () => null,
+            (e: unknown) => (e instanceof AppError ? e.message : Promise.reject(e)),
+          )
+        : null;
+      return { ownerBroadcastBanned: stillBlocked(owner?.broadcastBannedUntil?.toDate() ?? null, new Date()), chatBlock };
+    },
+
+    /** 샘플 계정(seedKind가 sample)인가. 예시 표시에만 쓴다(4-18). */
+    async isExample(userId: string) {
+      const u = (await db().collection("users").doc(userId).get()).data() as { seedKind?: string | null } | undefined;
+      return { example: u?.seedKind === "sample" };
+    },
+
     async send(viewer: Viewer, broadcastId: string, input: { messageId: string; content: string }): Promise<ChatItem> {
       const bref = db().collection("broadcasts").doc(broadcastId);
       const bsnap = await bref.get();

@@ -18,7 +18,7 @@ export const myAppealSchema = z.object({ status: appealStatusSchema, answer: z.s
 export const adminAppealSchema = z.object({
   id: z.string(), // 제재 ID와 같다
   userNickname: z.string(),
-  masked: z.boolean(),
+  masked: z.boolean(), // 심사용이 아닌 계정을 테스트 운영자에게 가렸는지
   sanctionKind: z.enum(["warning", "chatBan", "broadcastBan", "suspend"]),
   sanctionReason: z.string(),
   content: z.string(),
@@ -47,6 +47,7 @@ export const adminChargeSchema = z.object({
   amount: z.number(),
   status: z.enum(["pending", "done", "failed", "canceling", "canceled"]),
   paymentKey: z.string().nullable(),
+  masked: z.boolean(),
   createdAt: z.string(),
   cancelRequestedAt: z.string().nullable(),
   stuck: z.boolean(), // "취소 중"으로 멈춰 정리할 수 있는 건
@@ -70,6 +71,8 @@ export const adminBroadcastSchema = z.object({
   title: z.string(),
   ownerNickname: z.string(),
   status: z.enum(["ready", "live", "ended"]),
+  masked: z.boolean(),
+  replayPublic: z.boolean().nullable(), // 다시보기가 없으면 null
   createdAt: z.string(),
   startedAt: z.string().nullable(),
   endedAt: z.string().nullable(),
@@ -96,4 +99,5 @@ export const adminOpsApi = {
   adminJobs: c("GET", "/api/admin/jobs", none, z.object({ items: z.array(jobRunSchema) })),
   adminBroadcasts: c("GET", "/api/admin/broadcasts", none, z.object({ items: z.array(adminBroadcastSchema) })),
   forceEndBroadcast: c("POST", "/api/admin/broadcasts/:id/end", forceEndSchema, ok),
+  privateReplay: c("POST", "/api/admin/broadcasts/:id/private-replay", forceEndSchema, ok),
 } as const;
