@@ -6,9 +6,15 @@ import { SidebarDock } from "@/widgets/sidebar/Sidebar";
 import { Header } from "@/widgets/header/Header";
 import "./globals.css";
 
+const title = "나비 — 설치 없이 바로 켜는 방송";
+const description = "프로그램 설치도 구독자 조건도 없이 브라우저에서 바로 켜는 방송 플랫폼";
+
 export const metadata: Metadata = {
-  title: "나비 — 설치 없이 바로 켜는 방송",
-  description: "프로그램 설치도 구독자 조건도 없이 브라우저에서 바로 켜는 방송 플랫폼",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://navi-pink-kappa.vercel.app"),
+  title: { template: "%s — 나비", default: title },
+  description,
+  openGraph: { type: "website", locale: "ko_KR", siteName: "나비", title, description },
+  twitter: { card: "summary_large_image", title, description },
 };
 
 export const viewport: Viewport = { themeColor: "#0b0b0c", width: "device-width", initialScale: 1 };

@@ -79,20 +79,15 @@ export function Field({ label, error, hint, children }: { label: string; error?:
   );
 }
 
-// 주황과 빛은 '방송 중'에만. 글자와 점으로도 상태를 알린다.
+// 주황은 '방송 중'에만. 색과 함께 글자로도 상태를 알린다. 시청자 수 칩(ViewerBadge)과 모양을 맞춘다.
 export function StatusBadge({ status }: { status: "ready" | "live" | "ended" }) {
   const map = {
-    live: ["방송 중", "bg-live text-on-accent shadow-glow", "bg-on-accent"],
-    ready: ["준비", "bg-raised text-muted", "bg-subtle"],
-    ended: ["종료", "bg-raised text-muted", "bg-danger"],
+    live: ["LIVE", "bg-live text-on-accent"],
+    ready: ["준비", "bg-raised text-muted"],
+    ended: ["종료", "bg-raised text-muted"],
   } as const;
-  const [label, cls, dot] = map[status];
-  return (
-    <span className={cx("inline-flex items-center gap-1 rounded-xs px-2 py-1 text-badge-12", cls)}>
-      <span className={cx("size-2 rounded-full", dot)} aria-hidden />
-      {label}
-    </span>
-  );
+  const [label, cls] = map[status];
+  return <span className={cx("inline-flex items-center rounded-xs px-2 py-1 text-badge-12 font-bold", cls)}>{label}</span>;
 }
 
 // 시안의 Banner. 안내 띠와 안내 상자 모두 이 컴포넌트를 쓴다.

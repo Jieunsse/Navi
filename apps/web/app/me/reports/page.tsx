@@ -16,7 +16,7 @@ export default function MyReportsPage() {
   if (!me || !items) return <div className="grid flex-1 place-items-center"><Spinner /></div>;
   const tone = { pending: "text-live-ink", actioned: "text-success", dismissed: "text-subtle" } as Record<string, string>;
   return (
-    <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
       <h1 className="text-heading-28">내 신고 내역</h1>
       {items.length === 0 && <EmptyState title="신고한 내역이 없어요" />}
       <ul className="flex flex-col gap-2">

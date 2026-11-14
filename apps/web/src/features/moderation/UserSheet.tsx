@@ -1,5 +1,5 @@
 "use client";
-import { chatApi, type ChatItem } from "@nabi/shared/chat.ts";
+import type { ChatItem } from "@nabi/shared/chat.ts";
 import { CHAT_BAN_LABEL, CHAT_BAN_MEMO_MAX, moderationApi, type ChatBan } from "@nabi/shared/moderation.ts";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -18,11 +18,6 @@ export function UserSheet({ item, broadcastId, isOwner, onClose }: Props) {
   const [duration, setDuration] = useState<Duration>("1d");
   const [memo, setMemo] = useState("");
   const [busy, setBusy] = useState(false);
-  const [example, setExample] = useState(false); // 샘플 계정이면 "예시" 표시(4-18)
-
-  useEffect(() => {
-    if (item.authorId) void apiFetch(chatApi.authorExample, {}, { id: broadcastId, userId: item.authorId }).then((r) => setExample(r.example), () => undefined);
-  }, [item.authorId, broadcastId]);
 
   useEffect(() => {
     if (isOwner && !anonymous) void apiFetch(moderationApi.listChatBans).then((r) => setBans(r.items), () => setBans([]));
@@ -57,7 +52,6 @@ export function UserSheet({ item, broadcastId, isOwner, onClose }: Props) {
       title={anonymous ? "익명 후원" : item.authorNickname}
       badge={
         <>
-          {example && <span className="rounded-full border border-strong px-2 py-0.5 text-badge-12 text-muted">예시</span>}
           {!anonymous && item.authorGrade && item.authorGrade !== "알" ? <span className={cx("rounded-full bg-raised px-2 py-0.5 text-badge-12", item.authorGrade === "애벌레" ? "text-success" : "border border-strong text-text")}>{item.authorGrade}</span> : undefined}
         </>
       }

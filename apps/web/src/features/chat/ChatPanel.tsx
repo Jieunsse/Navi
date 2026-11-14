@@ -1,5 +1,6 @@
 "use client";
 import { chatApi, chatItemSchema, CHAT_MAX, type ChatItem } from "@nabi/shared/chat.ts";
+import { GRADE_LABEL, type Grade } from "@nabi/shared/grade.ts";
 import { honeyApi } from "@nabi/shared/honey.ts";
 import { collection, getDocs, limit, orderBy, query, Timestamp } from "firebase/firestore";
 import { RoomEvent, type Room } from "livekit-client";
@@ -9,7 +10,7 @@ import { ApiError, apiFetch } from "@/shared/api/apiFetch";
 import { firestore } from "@/shared/lib/firebase";
 import { loginHref, useSession } from "@/entities/session/session";
 import { UserSheet } from "@/features/moderation/UserSheet";
-import { Avatar, Button, cx, GiftIcon, IconButton, SendHorizontalIcon } from "@/shared/ui";
+import { Button, cx, GiftIcon, IconButton, SendHorizontalIcon } from "@/shared/ui";
 
 type Props = {
   broadcastId: string;
@@ -203,7 +204,7 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
         }}
-        className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 py-1"
         aria-live="polite"
       >
         {sorted.length === 0 && <p className="m-auto text-body-16 text-subtle">아직 채팅이 없어요</p>}
@@ -212,7 +213,7 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
         ))}
       </div>
 
-      <form onSubmit={submit} className={cx("border-t border-line p-3", inputClassName)}>
+      <form onSubmit={submit} className={cx("relative border-t border-line p-3", inputClassName)}>
         {ended ? (
           <p className="py-2 text-center text-body-16 text-subtle">방송이 끝나 채팅을 쓸 수 없어요</p>
         ) : (
@@ -246,15 +247,11 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
                 </IconButton>
               )}
             </div>
-            {(error || text.length > 0) && (
-              <div className="mt-1 flex justify-between text-caption-12">
-                <span id="chat-error" role="alert" className="text-danger">
-                  {error}
-                </span>
-                <span className="text-subtle">
-                  {text.length}/{CHAT_MAX}
-                </span>
-              </div>
+            {/* 입력창 위에 겹쳐 띄워 레이아웃이 밀리지 않게 한다 */}
+            {error && (
+              <p id="chat-error" role="alert" className="absolute inset-x-0 bottom-full bg-surface px-3 py-1 text-caption-12 text-danger">
+                {error}
+              </p>
             )}
           </>
         )}
@@ -264,24 +261,27 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
   );
 }
 
-const ago = (iso?: string) => {
-  const m = iso ? Math.floor((Date.now() - new Date(iso).getTime()) / 60000) : 0;
-  return m < 1 ? "방금" : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`;
+/** 같은 사람은 늘 같은 색이 되게 아이디(없으면 닉네임)로 색상환 각도를 정한다. 밝기는 화면 테마 토큰을 따른다. */
+const nickColor = (seed: string) => {
+  let h = 0;
+  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return `hsl(${h % 360} 75% var(--color-nick-lightness))`;
 };
 
 /** 닉네임 옆 등급. 알 등급은 표시하지 않는다. */
 function GradeBadge({ grade }: { grade?: string | null }) {
-  if (!grade || grade === "알") return null;
-  const tone = grade === "애벌레" ? "bg-raised text-success" : grade === "번데기" ? "border border-strong bg-raised text-text" : grade === "나비" ? "bg-accent text-accent-ink" : "bg-raised text-muted";
-  return <span className={cx("rounded-full px-2 py-0.5 text-badge-12", tone)}>{grade}</span>;
+  if (!grade || grade === "egg") return null;
+  const tone = grade === "larva" ? "bg-raised text-success" : grade === "pupa" ? "border border-strong bg-raised text-text" : grade === "butterfly" ? "bg-accent text-accent-ink" : "bg-raised text-muted";
+  return <span className={cx("rounded-full px-2 py-0.5 text-badge-12", tone)}>{GRADE_LABEL[grade as Grade] ?? grade}</span>;
 }
 
 function Row({ item: i, ownerId, mine, onPick }: { item: ChatItem; ownerId: string; mine: boolean; onPick: () => void }) {
   const host = i.isHost || (!!i.authorId && i.authorId === ownerId);
+  const style = { color: nickColor(i.authorId || i.authorNickname) };
   const name = mine ? (
-    <span className="text-caption-12 text-muted">{i.authorNickname}</span>
+    <span className="font-semibold" style={style}>{i.authorNickname}</span>
   ) : (
-    <button type="button" onClick={onPick} className="text-caption-12 text-muted hover:underline">
+    <button type="button" onClick={onPick} className="font-semibold hover:underline" style={style}>
       {i.authorNickname}
     </button>
   );
@@ -308,18 +308,15 @@ function Row({ item: i, ownerId, mine, onPick }: { item: ChatItem; ownerId: stri
     );
   }
   return (
-    <div className="flex items-start gap-2 rounded-sm p-2">
-      <Avatar name={i.authorNickname} size="sm" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1 break-words">
-        <div className="flex items-center gap-2">
-          {name}
-          {host && <span className="rounded-xs bg-raised px-1 text-badge-12 text-muted">방송자</span>}
-          <GradeBadge grade={i.authorGrade} />
-          <span className="text-caption-12 text-subtle">{ago(i.createdAt)}</span>
-        </div>
-        {i.hidden ? <Hidden /> : <p className="text-body-16">{i.content}</p>}
-      </div>
-    </div>
+    // 한 줄에 [표시] 닉네임 내용을 이어 쓰고, 길면 다음 줄로 넘긴다
+    <p className="rounded-sm px-2 py-1 text-body-16 break-words hover:bg-[var(--color-state-hover)]">
+      {host && <span className="mr-1 rounded-xs bg-raised px-1 align-middle text-badge-12 text-muted">방송자</span>}
+      <span className="mr-1 align-middle empty:hidden">
+        <GradeBadge grade={i.authorGrade} />
+      </span>
+      {name}
+      <span className="ml-2">{i.hidden ? <Hidden /> : i.content}</span>
+    </p>
   );
 }
 

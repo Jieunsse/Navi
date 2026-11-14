@@ -81,7 +81,7 @@ export function AdminGate({ children }: { children: ReactNode }) {
           })}
           {data?.isTestAdmin && <p className="mt-4 px-3 text-caption-12 text-subtle">테스트 운영자예요. 심사용 계정만 보고 조치할 수 있어요.</p>}
         </aside>
-        <div className="min-w-0 flex-1 p-8">
+        <div className="mx-auto w-full min-w-0 max-w-5xl flex-1 p-8">
           {denied ? <p className="text-muted">{denied}</p> : loading || !data ? <Spinner /> : <Ctx.Provider value={data}>{children}</Ctx.Provider>}
         </div>
       </div>

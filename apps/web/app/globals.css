@@ -12,6 +12,8 @@
   --color-bg-surface: #141415;
   --color-bg-raised: #1c1c1e;
   --color-bg-screen: #000000;
+  /* 채팅 닉네임 색 밝기. 색상은 사람마다 다르고 밝기만 테마에 맞춘다. */
+  --color-nick-lightness: 70%;
   --color-bg-scrim: rgb(0 0 0 / 0.6);
   --color-bg-media-overlay: rgb(0 0 0 / 0.6);
   /* 테두리·초점 */
@@ -122,6 +124,7 @@
   --color-state-pressed: rgb(10 10 10 / 0.09);
   --color-state-selected: rgb(10 10 10 / 0.06);
   --color-glow-live: rgb(255 91 31 / 0.35);
+  --color-nick-lightness: 38%;
   /* shortcut: 밝은 화면 그림자 값은 시안에 없어 어두운 화면과 같은 크기에 옅은 검정을 썼다. 시안에 값이 생기면 바꾼다. */
   --color-shadow-1: rgb(10 10 10 / 0.12);
   --color-shadow-2: rgb(10 10 10 / 0.18);

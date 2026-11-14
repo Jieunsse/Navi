@@ -65,6 +65,8 @@ const SAMPLE_UIDS = ACCOUNTS.filter((a) => a.seedKind === "sample").map((a) => a
 // 본인인증(목업) 값. 이름·생년월일·번호는 모두 지어낸 값이고, 명의가 서로 달라야 "같은 명의" 규칙에 걸리지 않는다.
 const IDENTITIES: Record<string, { name: string; birth: string; phone: string }> = {
   [U.viewer]: { name: "테스트시청", birth: "1990-01-01", phone: "01000000001" },
+  [U.broadcaster]: { name: "테스트방송", birth: "1991-01-01", phone: "01000000008" },
+  [U.admin]: { name: "테스트운영", birth: "1989-01-01", phone: "01000000009" },
   [U.practice]: { name: "연습시청", birth: "1992-02-02", phone: "01000000002" },
   [U.jiwoo]: { name: "김지우", birth: "1995-05-05", phone: "01000000003" },
   [U.seoyeon]: { name: "박서연", birth: "1996-06-06", phone: "01000000004" },
@@ -74,6 +76,8 @@ const IDENTITIES: Record<string, { name: string; birth: string; phone: string }>
 };
 const PAYOUTS: Record<string, { last4: string; holder: string }> = {
   [U.broadcaster]: { last4: "1234", holder: "테스트방송" },
+  [U.viewer]: { last4: "1357", holder: "테스트시청" },
+  [U.admin]: { last4: "2580", holder: "테스트운영" },
   [U.practice]: { last4: "5678", holder: "연습시청" },
   [U.harin]: { last4: "9012", holder: "하린" },
   [U.haneul]: { last4: "3456", holder: "하늘" },
@@ -437,7 +441,7 @@ export function seedUseCases(deps: SeedDeps) {
     // 충전. 태양은 취소한 충전 1건을 더 만든다(쓰기 전에 취소해야 하므로 후원 전에 한다).
     let practiceCharge = "";
     await Promise.all([
-      par([U.viewer, U.jiwoo, U.seoyeon], (uid) => charge(uid, 10_000)),
+      par([U.viewer, U.jiwoo, U.seoyeon, U.broadcaster, U.admin], (uid) => charge(uid, 10_000)),
       charge(U.practice, 10_000).then((id) => (practiceCharge = id)),
       charge(U.sora, 10_000),
       charge(U.jimin, 10_000),
@@ -525,6 +529,29 @@ export function seedUseCases(deps: SeedDeps) {
       await s.say(U.seoyeon, "이번 판 이길 수 있어요");
       await s.donate(U.jiwoo, 2000, "잘 보고 가요");
     });
+
+    // 테스트 시청자와 테스트 운영자도 지난 방송 1개씩을 둔다. 내 방송 관리, 다시보기, 정산 내역이 비지 않게 하기 위해서다.
+    // 62시간보다 오래된 방송이라 아래 정산 테스트 실행에 들어가 "지급 완료(테스트)"가 된다. 방송 1회라 둘 다 알 등급 그대로다.
+    await scene({ id: "seed-bc-viewer-1", category: "잡담", owner: V, title: "예시 방송 · 테스트시청자의 첫 방송", hoursAgo: 70, recording: { video: 0, isPublic: true, shared: true } }, true, async (s) => {
+      await s.say(V, "시청만 하다가 처음 방송을 켜 봤어요");
+      await s.say(U.seoyeon, "첫 방송 축하해요");
+      await s.donate(U.seoyeon, 2000, "첫 방송 축하해요");
+      await s.say(U.jiwoo, "목소리 잘 들려요");
+      await s.say(V, "와 주셔서 고마워요");
+      await s.donate(U.seoyeon, 1000, "다음 방송도 올게요");
+    });
+    await scene({ id: "seed-bc-admin-1", category: "잡담", owner: U.admin, title: "예시 방송 · 운영자와 함께하는 이용 안내", hoursAgo: 72, recording: { video: 2, isPublic: true, shared: true } }, true, async (s) => {
+      await s.say(U.admin, "나비 이용 방법을 안내해 드려요");
+      await s.say(U.broadcaster, "후원은 어떻게 하나요?");
+      await s.say(U.admin, "방송 화면의 후원하기 버튼을 누르면 돼요");
+      await s.donate(U.broadcaster, 3000, "안내 고마워요");
+      const m = await s.mission(U.broadcaster, 2000, "신고하는 방법도 보여 주세요", 30);
+      await s.act(m, "accept");
+      await s.say(U.admin, "채팅에서 닉네임을 누르면 신고할 수 있어요");
+      await s.act(m, "success");
+      await s.say(U.seoyeon, "정리가 잘 돼 있어요");
+      await s.donate(U.seoyeon, 1000, "유익했어요");
+    });
     };
 
     // 정산 테스트 실행에 들어갈 지난 방송은 모두 62시간 전보다 오래된 것이다(아래 정산 단계 참고). 방송자 몫은 지난 방송 안에서만 나온다.
@@ -588,7 +615,7 @@ export function seedUseCases(deps: SeedDeps) {
       });
     };
     await Promise.all([laneA(), laneB(), laneC()]); // 후원하는 사람과 받는 사람이 겹치지 않는 세 갈래를 동시에 돌린다
-    log("지난 방송 11개");
+    log("지난 방송 13개");
 
     // 홈이 비어 보이지 않게 방송 중인 예시 방송 8개와 준비 중인 예시 방송 2개를 둔다. 테스트 방송자는 주인으로 쓰지 않는다(30분 제한).
     // 제재로 방송이 끝나는 계정(도윤, 보람, 태양, 지민)도 주인으로 쓰지 않는다.
@@ -600,14 +627,14 @@ export function seedUseCases(deps: SeedDeps) {
         [U.minsu, "이번 판은 꼭 이길게요"], [U.seoyeon, "화이팅!"], [U.viewer, "방금 플레이 멋졌어요"], [U.minsu, "고마워요, 한 판 더 갑니다"], [U.jiwoo, "다음 판도 기대돼요"],
       ], [{ uid: U.jimin, amount: 1000, message: "이길 거예요" }]),
       liveScene({ id: "seed-bc-live-3", owner: U.jiwoo, title: "예시 방송 · 같이 공부해요", category: "공부", viewerCount: 37, sourceType: "screen", minutesAgo: 5 }, [
-        [U.jiwoo, "오늘은 영어 단어 50개 외워요"], [U.seoyeon, "저도 같이 할게요"], [U.viewer, "집중 잘 되는 음악 추천해 주세요"],
-      ]),
+        [U.jiwoo, "오늘은 영어 단어 50개 외워요"], [U.seoyeon, "저도 같이 할게요"], [U.viewer, "집중 잘 되는 음악 추천해 주세요"], [U.broadcaster, "저도 공부하러 왔어요"],
+      ], [{ uid: U.broadcaster, amount: 2000, message: "공부 화이팅" }, { uid: U.broadcaster, amount: 1000, message: "끝까지 응원해요" }]),
       liveScene({ id: "seed-bc-live-4", owner: U.seoyeon, title: "예시 방송 · 기타 연습 시간", category: "음악", viewerCount: 560, sourceType: "camera", minutesAgo: 48 }, [
         [U.seoyeon, "오늘은 쉬운 곡부터 쳐 볼게요"], [U.harin, "소리 좋아요"], [U.viewer, "어떤 곡이에요?"], [U.seoyeon, "잔잔한 곡이에요"],
       ], [{ uid: U.sora, amount: 1000, message: "기타 소리 좋아요" }]),
       liveScene({ id: "seed-bc-live-5", owner: U.haneul, title: "예시 방송 · 하늘달의 밤 수다", category: "잡담", viewerCount: 842, sourceType: "camera", minutesAgo: 22 }, [
-        [U.haneul, "잠이 안 와서 켰어요"], [U.viewer, "저도 잠이 안 와요"], [U.jiwoo, "오늘 하루 어땠어요?"], [U.haneul, "다들 이야기해 봐요"],
-      ]),
+        [U.haneul, "잠이 안 와서 켰어요"], [U.viewer, "저도 잠이 안 와요"], [U.jiwoo, "오늘 하루 어땠어요?"], [U.haneul, "다들 이야기해 봐요"], [U.admin, "늦은 시간까지 방송 고마워요"],
+      ], [{ uid: U.admin, amount: 3000, message: "따뜻한 차 한 잔 하세요" }, { uid: U.admin, amount: 2000, message: "좋은 밤 보내세요" }]),
       liveScene({ id: "seed-bc-live-6", owner: U.sora, title: "예시 방송 · 신작 게임 첫 플레이", category: "게임", viewerCount: 15, sourceType: "screen", minutesAgo: 17 }, [
         [U.sora, "신작 게임을 처음 해 봐요"], [U.seoyeon, "어렵지 않아요?"], [U.viewer, "튜토리얼부터 보여 주세요"],
       ]),
@@ -653,12 +680,31 @@ export function seedUseCases(deps: SeedDeps) {
         await mod.banChat(owner, { userId: U.taeyang, duration: "1d", memo: "다른 시청자를 놀렸어요" });
         await mod.banChat(owner, { userId: U.jimin, duration: "perm", memo: "같은 말을 계속 올렸어요" });
       },
+      // 테스트 시청자: 접수 상태 신고 1건, 지난 제재 3건(경고 끝남, 채팅 금지 끝남, 방송 금지 해제). 지금 걸린 제재가 없어 테스트를 막지 않는다.
+      // 끝난 채팅 금지는 이의 제기를 남겨 두어 심사자가 직접 눌러 볼 수 있다.
+      async () => {
+        await rep(V, { targetType: "user", targetId: U.minsu, reason: "abuse", detail: "방송 중에 시청자를 놀렸어요" });
+        await give(V, { kind: "warning", reason: "채팅에서 다른 시청자와 말다툼을 해 경고해요" });
+        await mod.ackWarnings(await viewerOf(V));
+        await pastSanction(await give(V, { kind: "chatBan", days: 1, reason: "같은 말을 여러 번 올려 하루 동안 채팅을 막아요" }), V, 5, 4);
+        await admin.revoke(runner, await give(V, { kind: "broadcastBan", days: 7, reason: "방송 제목에 다른 방송 주소를 적어 7일간 방송을 막아요" }), "주소가 아니라 예시 문구로 확인돼 해제해요");
+        await mod.banChat(await viewerOf(V), { userId: U.jiwoo, duration: "1d", memo: "같은 질문을 계속 올렸어요" }); // 내 방송 관리의 활동 제한 탭
+      },
+      // 테스트 방송자: 지난 제재 2건(경고 끝남, 채팅 금지 끝남). 지금 걸린 제재가 없어 방송과 승급 시나리오를 막지 않는다.
+      async () => {
+        await give(U.broadcaster, { kind: "warning", reason: "방송 제목에 과장 표현을 써서 경고해요(예시)" });
+        await mod.ackWarnings(await viewerOf(U.broadcaster));
+        await pastSanction(await give(U.broadcaster, { kind: "chatBan", days: 1, reason: "다른 방송 채팅에 같은 말을 여러 번 올려 하루 동안 채팅을 막아요(예시)" }), U.broadcaster, 6, 5);
+      },
+      // 테스트 운영자: 자기 방송에 건 활동 제한 1건. 운영자에게는 제재를 걸 수 없어서 제재 내역은 비어 있는 게 맞다.
+      async () => mod.banChat(await viewerOf(U.admin), { userId: U.taeyang, duration: "1d", memo: "안내 방송에서 장난 채팅을 계속 올렸어요" }),
       // 도윤: 방송 신고 3건(테스트 시청자와 테스트 방송자도 신고) → 방송 금지, 이의 대기
       async () => {
         const detail = ["수상한 사이트를 계속 광고해요", "같은 링크를 반복해서 올려요", "방송 내용이 광고 같아요"];
         await rep(V, { targetType: "broadcast", targetId: "seed-bc-doyun-1", reason: "illegal", detail: detail[0]! });
         await rep(U.jiwoo, { targetType: "broadcast", targetId: "seed-bc-doyun-1", reason: "spam", detail: detail[1]! });
         await rep(U.broadcaster, { targetType: "broadcast", targetId: "seed-bc-doyun-1", reason: "spam", detail: detail[2]! });
+        await rep(U.admin, { targetType: "broadcast", targetId: "seed-bc-doyun-1", reason: "illegal", detail: "이용자로 보다가 광고 방송을 발견했어요" }); // 운영자의 신고 내역과 처리 결과 알림
         const reason = "방송 중 수상한 사이트를 반복해서 광고해 7일간 방송을 막아요";
         await admin.resolve(runner, U.doyun, { action: "sanction", reason, sanction: { kind: "broadcastBan", days: 7 } });
         await appealUseCases.create(await viewerOf(U.doyun), await sanctionIdOf(U.doyun, reason), "광고가 아니라 맛집 소개였어요. 다시 확인해 주세요.");
@@ -786,6 +832,14 @@ export function seedUseCases(deps: SeedDeps) {
       past("seed-job-scheduled-1", "scheduled", new Date(monthStart.getTime() + 5 * 60_000), 5, testRunMessage({ newDonations: 41, newShare: 96_300, paidCount: 4, heldCount: 1 }), null),
       past("seed-job-scheduled-2", "scheduled", new Date(prevMonthStart.getTime() + 5 * 60_000), 4, `${testRunMessage({ newDonations: 27, newShare: 61_800, paidCount: 2, heldCount: 1 })} (실패 1명)`, null),
       past("seed-job-test-1", "test", new Date(prevMonthStart.getTime() + 20 * DAY), 2, testRunMessage({ newDonations: 6, newShare: 11_200, paidCount: 2, heldCount: 0 }), "테스트운영자"),
+      // 직접 써 넣는 값: 테스트 방송자의 지지난달 정산 1건(지난달 예약 실행의 결과). 연결된 후원은 없다.
+      // 지금 남은 후원 6건은 정산되지 않은 채라 "첫 정산을 심사자가 직접 해 본다"(10-8)는 그대로 된다.
+      db().collection("settlements").doc("seed-settle-broadcaster-prev").set({
+        streamerId: U.broadcaster, periodStart: ts(kstMonthStartOf(new Date(prevMonthStart.getTime() - DAY)).getTime()), periodEnd: ts(prevMonthStart.getTime()), mode: "scheduled",
+        donationCount: 4, honey: 9_000, streamerShare: 7_200, nabiShare: 1_800, deduction: 0, tax: 0, payout: 7_200,
+        status: "paid", holdReason: null, heldBy: null, payoutDate: ts(prevMonthStart.getTime() + 24 * DAY), paidAt: ts(prevMonthStart.getTime() + 24 * DAY),
+        transferId: "MOCK-SEED-PREV-1234", mock: true, hasSameIdentity: false, createdAt: ts(prevMonthStart.getTime() + 5 * 60_000), seedData: true,
+      }),
     ]);
 
     // 운영자가 더한 금칙어 몇 개(운영 기록이 남는다). 이미 있으면 다시 더하지 않는다. 금칙어 목록은 시드 초기화가 지우지 않는 설정이다.

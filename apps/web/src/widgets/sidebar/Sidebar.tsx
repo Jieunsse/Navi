@@ -100,7 +100,6 @@ export function SidebarBody({ path, collapsed = false, mobile = false }: { path:
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1">
                     <span className="min-w-0 truncate text-body-16">{b.ownerNickname}</span>
-                    {b.seedData && <span className="inline-flex items-center rounded-xs bg-raised px-1 text-badge-12 text-muted">예시</span>}
                   </span>
                   <span className="block truncate text-caption-12 text-muted">{b.title}</span>
                 </span>
