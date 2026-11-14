@@ -11,9 +11,8 @@
 
 ### 배포 주소
 
-<!-- 배포한 뒤 아래 주소를 채웁니다. -->
-- 서비스: (배포 후 적습니다)
-- API 문서: 서비스 주소 뒤에 `/api-docs`를 붙입니다.
+- 서비스: https://navi-pink-kappa.vercel.app
+- API 문서: https://navi-pink-kappa.vercel.app/api-docs
 
 ### 테스트 계정
 
