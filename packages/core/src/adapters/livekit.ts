@@ -6,6 +6,8 @@ export interface LiveKitPort {
   /** 그 참가자가 방에 있고 트랙을 하나 이상 올렸는가 */
   isPublishing(room: string, identity: string): Promise<boolean>;
   isInRoom(room: string, identity: string): Promise<boolean>;
+  /** 방에 있는 시청자(이름이 viewer_로 시작) 수. 방이 없으면 0. 매번 목록을 받아 새로 센다 */
+  countViewers(room: string): Promise<number>;
   /** 방이 없어도 오류로 보지 않는다(결정 30) */
   closeRoom(room: string): Promise<void>;
   receiveWebhook(body: string, auth: string | null): Promise<WebhookEvent>;
@@ -35,6 +37,10 @@ export function createLiveKit(): LiveKitPort {
     },
     async isInRoom(room, identity) {
       return !!(await participant(room, identity));
+    },
+    async countViewers(room) {
+      const list = await rooms.listParticipants(room).catch(() => []);
+      return list.filter((p) => p.identity.startsWith("viewer_")).length;
     },
     async closeRoom(room) {
       await rooms.deleteRoom(room).catch(() => undefined);

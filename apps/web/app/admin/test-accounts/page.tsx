@@ -57,7 +57,7 @@ function Body() {
 
       <section className="flex flex-col gap-4 rounded-lg bg-surface p-8">
         <h2 className="text-heading-16">전체 초기화</h2>
-        <p className="text-body-16 text-muted">테스트 계정 9개와 더미 데이터를 모두 지우고 처음부터 다시 만들어요. 수십 초 걸릴 수 있고, 그동안 테스트 계정은 &quot;준비하는 중이에요&quot;가 떠요.</p>
+        <p className="text-body-16 text-muted">테스트 계정과 더미 데이터를 모두 지우고 처음부터 다시 만들어요. 수십 초 걸릴 수 있고, 그동안 테스트 계정은 &quot;준비하는 중이에요&quot;가 떠요.</p>
         <p className="text-caption-12 text-muted">미션이 진행 중이거나, 결제 대기·취소 중 충전, 처리 중인 환급, 송금 중인 정산이 있으면 거절해요. 실제 사용자가 걸린 돈 기록과 운영 기록은 지우지 않아요.</p>
         {data?.lastFullResetAt && <p className="text-caption-12 text-muted">마지막 전체 초기화: {formatTime(data.lastFullResetAt)}</p>}
         {data?.nextFullResetAt && <Notice tone="warn">테스트 운영자는 10분에 한 번만 전체 초기화를 할 수 있어요. {formatTime(data.nextFullResetAt)} 이후에 눌러 주세요.</Notice>}

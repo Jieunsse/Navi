@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
 import { SessionProvider } from "@/entities/session/session";
+import { SidebarDock } from "@/widgets/sidebar/Sidebar";
 import { Header } from "@/widgets/header/Header";
 import "./globals.css";
 
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-full flex-col">
         <SessionProvider>
           <Header />
-          <main className="flex flex-1 flex-col">{children}</main>
+          <div className="flex flex-1">
+            <SidebarDock />
+            <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+          </div>
         </SessionProvider>
         <Toaster position="top-center" />
       </body>

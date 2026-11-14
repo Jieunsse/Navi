@@ -1,67 +1,147 @@
 "use client";
+import { asCategory, CATEGORIES, type CategoryId } from "@nabi/shared";
+import { recordingApi, type Recording } from "@nabi/shared/recording.ts";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { useHomeBroadcasts, type LiveBroadcast } from "@/entities/broadcast/model";
-import { formatTime, sourceLabel } from "@/shared/lib/format";
-import { Avatar, buttonCls, EmptyState, RadioIcon, Skeleton, StatusBadge, VideoIcon } from "@/shared/ui";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useHomeBroadcasts } from "@/entities/broadcast/model";
+import { apiFetch } from "@/shared/api/apiFetch";
+import { buttonCls, EmptyState, RadioIcon, Skeleton, Tabs } from "@/shared/ui";
+import { BroadcastCard, CardRow, ReplayCard } from "@/widgets/home/cards";
+import { AdBanner, EventPopup, PromoRow, SectionHead } from "@/widgets/home/sections";
 
-const gridCls = "grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-x-6 md:gap-y-8 min-[1200px]:grid-cols-4";
+const gridCls = "grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-3 2xl:grid-cols-5 min-[1100px]:grid-cols-4";
 
 export default function HomePage() {
+  // useSearchParams는 Suspense 안에서만 쓸 수 있다.
+  return (
+    <Suspense>
+      <Home />
+    </Suspense>
+  );
+}
+
+function Home() {
   const { live, ready, loading } = useHomeBroadcasts();
-  const empty = !loading && !live?.length && !ready?.length;
+  const router = useRouter();
+  const raw = useSearchParams().get("category");
+  const category: CategoryId | "전체" = raw ? asCategory(raw) : "전체";
+  const [expanded, setExpanded] = useState(false);
+  const [replays, setReplays] = useState<Recording[] | null>(null);
+  useEffect(() => {
+    apiFetch(recordingApi.listReplays).then(
+      (r) => setReplays(r.items.slice(0, 12)),
+      () => setReplays([]),
+    );
+  }, []);
+
+  // 방송 중(최근 시작순) 뒤에 곧 시작하는 방송을 잇는다.
+  const all = [...(live ?? []), ...(ready ?? [])];
+  const picked = category === "전체" ? all : all.filter((b) => b.category === category);
+  const [main, ...rest] = all;
+  const tabs = [{ value: "전체" as const, label: "전체" }, ...CATEGORIES.map((c) => ({ value: c.id, label: c.id }))];
 
   return (
-    <div className="flex w-full flex-1 flex-col gap-8 px-4 py-6 md:p-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-heading-28">지금 방송</h1>
-        <Link href="/studio/new" className={buttonCls({ variant: "live" })}>
-          <RadioIcon />
-          방송하기
-        </Link>
-      </div>
-      {loading ? (
-        <ListSkeleton />
-      ) : empty ? (
-        <EmptyState
-          title="지금 방송 중인 사람이 없어요"
-          action={
-            <Link href="/studio/new" className={buttonCls({ variant: "live" })}>
-              <RadioIcon />
-              방송하기
-            </Link>
-          }
+    <div className="flex w-full flex-1 flex-col gap-10 px-4 py-6 md:p-8">
+      <PromoRow />
+
+      <section className="flex flex-col gap-4" aria-label="지금 방송">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-heading-20">지금 방송</h2>
+          <Link href="/studio/new" className={buttonCls({ variant: "live", size: "sm" })}>
+            <RadioIcon size={16} />
+            방송하기
+          </Link>
+        </div>
+        {loading ? (
+          <FeaturedSkeleton />
+        ) : !main ? (
+          <EmptyState
+            title="지금 방송 중인 사람이 없어요"
+            action={
+              <Link href="/studio/new" className={buttonCls({ variant: "live" })}>
+                <RadioIcon />
+                방송하기
+              </Link>
+            }
+          />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <BroadcastCard b={main} big />
+            <ul className="grid grid-cols-2 gap-4">
+              {rest.slice(0, 4).map((b) => (
+                <li key={b.id} className="min-w-0">
+                  <BroadcastCard b={b} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <AdBanner />
+
+      <section id="category" className="flex scroll-mt-20 flex-col gap-4" aria-label="카테고리별 방송">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-heading-20">카테고리별 방송</h2>
+          {picked.length > 0 && (
+            <button type="button" className="text-caption-12 text-muted hover:text-text" onClick={() => setExpanded(!expanded)}>
+              {expanded ? "접기" : "전체보기"}
+            </button>
+          )}
+        </div>
+        <Tabs
+          label="카테고리"
+          items={tabs}
+          value={category}
+          onChange={(v) => {
+            setExpanded(false);
+            router.replace(v === "전체" ? "/" : `/?category=${encodeURIComponent(v)}`, { scroll: false });
+          }}
         />
-      ) : (
-        <>
-          <Section title="방송 중" items={live ?? []} />
-          <Section title="곧 시작해요" items={ready ?? []} />
-        </>
-      )}
+        {loading ? null : picked.length === 0 ? (
+          <p className="py-10 text-center text-caption-12 text-muted">{category === "전체" ? "지금 방송 중인 사람이 없어요" : `${category} 방송이 아직 없어요`}</p>
+        ) : expanded ? (
+          <ul className={gridCls}>
+            {picked.map((b) => (
+              <li key={b.id} className="min-w-0">
+                <BroadcastCard b={b} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <CardRow>
+            {picked.map((b) => (
+              <li key={b.id}>
+                <BroadcastCard b={b} />
+              </li>
+            ))}
+          </CardRow>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-4" aria-label="다시보기">
+        <SectionHead title="다시보기" more={{ href: "/replays" }} />
+        {replays === null ? null : replays.length === 0 ? (
+          <p className="py-10 text-center text-caption-12 text-muted">아직 공개된 다시보기가 없어요</p>
+        ) : (
+          <CardRow>
+            {replays.map((r) => (
+              <li key={r.id}>
+                <ReplayCard r={r} />
+              </li>
+            ))}
+          </CardRow>
+        )}
+      </section>
+
+      <EventPopup />
     </div>
   );
 }
 
-function Section({ title, items }: { title: string; items: LiveBroadcast[] }) {
-  if (!items.length) return null;
-  return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-heading-16 text-muted">
-        {title} · {items.length}
-      </h2>
-      <ul className={gridCls}>
-        {items.map((b) => (
-          <li key={b.id}>
-            <BroadcastCard b={b} />
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 // 320ms 안에 끝나면 아무것도 보여주지 않고, 더 걸리면 카드 자리만 잡은 뼈대를 보여준다(B-5). 뼈대는 움직이지 않는다.
-function ListSkeleton() {
+function FeaturedSkeleton() {
   const [show, setShow] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShow(true), 320);
@@ -69,44 +149,13 @@ function ListSkeleton() {
   }, []);
   if (!show) return null;
   return (
-    <ul className={gridCls} aria-hidden>
-      {[0, 1, 2, 3].map((i) => (
-        <li key={i} className="flex gap-3 md:flex-col">
-          <Skeleton className="aspect-video w-32 shrink-0 md:w-full" />
-          <div className="flex flex-1 flex-col gap-2">
-            <Skeleton className="h-6 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// 시안의 BroadcastCard. 휴대폰은 한 줄 목록(썸네일 128×72), 태블릿 이상은 카드.
-function BroadcastCard({ b }: { b: LiveBroadcast }) {
-  const isLive = b.status === "live";
-  return (
-    <Link href={`/live/${b.id}`} className="group flex gap-3 md:flex-col">
-      <div className="relative grid aspect-video w-32 shrink-0 place-items-center overflow-hidden rounded-sm bg-raised text-subtle md:w-full">
-        {b.sourceType === "camera" ? <VideoIcon size={24} /> : <RadioIcon size={24} />}
-        <span className="absolute left-2 top-2 flex gap-1 md:left-3 md:top-3">
-          <StatusBadge status={b.status} />
-          {b.seedData && <span className="inline-flex items-center rounded-xs bg-raised px-2 py-1 text-badge-12 text-muted">예시</span>}
-        </span>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" aria-hidden>
+      <Skeleton className="aspect-video w-full" />
+      <div className="grid grid-cols-2 gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="aspect-video w-full" />
+        ))}
       </div>
-      <div className="flex min-w-0 flex-1 gap-3">
-        <span className="hidden md:block">
-          <Avatar name={b.ownerNickname} live={isLive} />
-        </span>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="line-clamp-2 text-heading-16">{b.title}</p>
-          <p className="truncate text-caption-12 text-muted">
-            {b.ownerNickname} · {sourceLabel[b.sourceType]}
-          </p>
-          <p className="truncate text-caption-12 text-subtle">{isLive ? `${formatTime(b.startedAt)} 시작` : `${formatTime(b.createdAt)}에 만듦 · 곧 시작`}</p>
-        </div>
-      </div>
-    </Link>
+    </div>
   );
 }

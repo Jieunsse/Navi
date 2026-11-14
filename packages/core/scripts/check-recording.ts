@@ -21,6 +21,7 @@ const lk: LiveKitPort = {
   token: async () => "t",
   isPublishing: async () => true,
   isInRoom: async () => true,
+  countViewers: async () => 0,
   closeRoom: async (r) => void closed.push(r),
   receiveWebhook: async () => {
     throw new Error("unused");

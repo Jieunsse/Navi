@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { categorySchema } from "./category.ts";
 import { NICKNAME_RE, TITLE_MAX } from "./rules.ts";
 
 export const nicknameSchema = z
@@ -31,6 +32,8 @@ export const broadcastSchema = z.object({
   ownerNickname: z.string(),
   title: z.string(),
   sourceType: sourceTypeSchema,
+  viewerCount: z.number().optional(), // 없으면 0명으로 본다
+  category: categorySchema.optional(), // 없으면 "잡담"으로 본다
   status: broadcastStatusSchema,
   createdAt: z.iso.datetime(),
   startedAt: z.iso.datetime().nullable(),

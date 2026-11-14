@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { categorySchema } from "./category.ts";
 import { broadcastSchema, meSchema, nicknameSchema, signupSchema, sourceTypeSchema, titleSchema } from "./schemas.ts";
 
 // API 약속(결정 18). 화면은 apiFetch로, 서버는 route 헬퍼로 같은 약속을 쓴다.
@@ -21,7 +22,7 @@ export const api = {
   testLogin: c("POST", "/api/auth/test-login", z.object({ account: z.enum(["broadcaster", "viewer", "admin"]) }), z.object({ token: z.string() })),
   me: c("GET", "/api/me", none, meSchema),
 
-  createBroadcast: c("POST", "/api/broadcasts", z.object({ title: titleSchema, sourceType: sourceTypeSchema, withCamera: z.boolean().default(false) }), z.object({ id: z.string() })),
+  createBroadcast: c("POST", "/api/broadcasts", z.object({ title: titleSchema, sourceType: sourceTypeSchema, withCamera: z.boolean().default(false), category: categorySchema.default("잡담") }), z.object({ id: z.string() })),
   getBroadcast: c("GET", "/api/broadcasts/:id", none, broadcastSchema),
   updateBroadcast: c("PATCH", "/api/broadcasts/:id", z.object({ title: titleSchema }), ok),
   deleteBroadcast: c("DELETE", "/api/broadcasts/:id", none, ok),

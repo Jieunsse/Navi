@@ -12,6 +12,15 @@ export const SEED_UIDS = {
   minsu: "seed-sample-minsu",
   jiwoo: "seed-sample-jiwoo",
   seoyeon: "seed-sample-seoyeon",
+  // 운영자 화면의 목록을 채우는 샘플 계정(07 4-18). 등급과 상태(정상, 제재 중, 정지)가 고루 보이게 한다.
+  haneul: "seed-sample-haneul",
+  doyun: "seed-sample-doyun",
+  sora: "seed-sample-sora",
+  boram: "seed-sample-boram",
+  yerin: "seed-sample-yerin",
+  taeyang: "seed-sample-taeyang",
+  jimin: "seed-sample-jimin",
+  seojun: "seed-sample-seojun",
 } as const;
 
 /** README로 들어가는 두 계정. 심사용이라 비밀번호가 공개돼도 괜찮다. */

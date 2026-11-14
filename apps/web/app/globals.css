@@ -264,3 +264,11 @@ select:focus-visible {
   --border-radius: var(--radius-md);
   z-index: var(--z-toast);
 }
+
+/* Tailwind 4는 버튼 커서를 기본값(화살표)으로 둔다. 눌리는 버튼은 손가락 모양으로 되돌린다. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}

@@ -1,4 +1,4 @@
-import { findBannedWord, type Broadcast, type SourceType } from "@nabi/shared";
+import { asCategory, findBannedWord, type Broadcast, type SourceType } from "@nabi/shared";
 import { getBannedWords } from "./bannedWords.ts";
 import type { ChatItem } from "@nabi/shared/chat.ts";
 import { db, FieldValue, iso, Timestamp } from "../adapters/firebase.ts";
@@ -18,6 +18,7 @@ type BroadcastDoc = Omit<Broadcast, "id" | "createdAt" | "startedAt" | "endedAt"
   roomName: string;
   recordingEnabled?: boolean;
   withCamera?: boolean;
+  viewerCount?: number; // 웹훅이 올 때마다 다시 센 시청자 수(결정 31)
   recordingId?: string | null; // 방송 시작 때 만든 녹화 문서(4-9)
 };
 
@@ -30,6 +31,8 @@ function toBroadcast(id: string, d: BroadcastDoc): Broadcast {
     ownerNickname: d.ownerNickname,
     title: d.title,
     sourceType: d.sourceType,
+    category: asCategory(d.category),
+    viewerCount: d.viewerCount ?? 0,
     status: d.status,
     createdAt: iso(d.createdAt)!,
     startedAt: iso(d.startedAt),
@@ -74,7 +77,7 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
       const { durationMs, counted } = endStats(b.startedAt?.toDate() ?? null, endedAt.toDate());
       // 승급 읽기도 쓰기 전에 끝낸다. 정리할 미션의 상금·응원금 건수도 함께 더해서 본다(4-12).
       const promo = await readPromotion(tx, b.ownerId, { broadcastCount: counted, totalBroadcastMs: durationMs, donationCount: missions.donationCount });
-      tx.update(ref, { status: "ended", endedAt });
+      tx.update(ref, { status: "ended", endedAt, viewerCount: 0 });
       // 같은 트랜잭션에서 "녹화 중"을 "처리 중"으로 바꾼다(07 3장 2번)
       if (recRef && rec?.status === "recording") tx.update(recRef, { status: "processing", endedAt });
       tx.update(db().collection("users").doc(b.ownerId), {
@@ -130,7 +133,7 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
     end,
     enforceTestLimit: async (id: string) => enforceTestLimit(id, await load(id)),
 
-    async create(viewer: Viewer, input: { title: string; sourceType: SourceType; withCamera?: boolean }) {
+    async create(viewer: Viewer, input: { title: string; sourceType: SourceType; withCamera?: boolean; category?: string }) {
       await assertCanBroadcast(viewer.uid);
       await assertTitle(input.title);
       const ref = col().doc();
@@ -139,10 +142,12 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
         ownerNickname: viewer.user.nickname,
         title: input.title,
         sourceType: input.sourceType,
+        category: asCategory(input.category),
         withCamera: input.sourceType === "screen" && !!input.withCamera, // 화면 공유일 때만(결정 15)
         status: "ready",
         recordingEnabled: false,
         roomName: ref.id, // 방 이름은 방송 ID와 같다(결정 30)
+        viewerCount: 0,
         donationTotal: 0,
         donationCount: 0,
         createdAt: Timestamp.now(),
@@ -217,6 +222,10 @@ export function broadcastUseCases(livekit: LiveKitPort, recordings: RecordingUse
       } else if (event.event === "participant_left" && identity.startsWith("host_")) {
         // 같은 이름으로 다시 연결해 방에 있으면 끝내지 않는다(결정 27).
         if (!(await livekit.isInRoom(id, identity))) await end(id);
+      } else if ((event.event === "participant_joined" || event.event === "participant_left") && identity.startsWith("viewer_")) {
+        // 하나씩 더하고 빼지 않고 매번 다시 센다. 알림이 빠져도 다음 알림에서 바로잡힌다. 끝난 방송은 건드리지 않는다.
+        const b = await load(id).catch(() => null);
+        if (b && b.status !== "ended") await col().doc(id).update({ viewerCount: await livekit.countViewers(id) });
       } else if (event.event === "room_finished") {
         await end(id);
       }

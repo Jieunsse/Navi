@@ -1,4 +1,4 @@
-// pnpm seed → 심사용 테스트 계정 9개와 더미 데이터를 처음부터 다시 만든다(07 4-18).
+// pnpm seed → 심사용 테스트 계정 17개와 더미 데이터를 처음부터 다시 만든다(07 4-18).
 // pnpm seed --reset → 같은 함수를 부른다. 운영자 화면의 "전체 초기화"와 같다. 여러 번 돌려도 결과가 같다.
 // pnpm seed --target=production → 배포 환경. 프로젝트 이름을 한 번 더 입력해야 실행된다.
 import { createInterface } from "node:readline/promises";
@@ -19,4 +19,4 @@ if (target === "production") {
 
 const started = Date.now();
 await seedUseCases({ end: broadcasts().end, log: (m) => console.log(m) }).rebuild();
-console.log(`끝: 계정 9개와 더미 데이터를 만들었어요 (${Math.round((Date.now() - started) / 1000)}초)`);
+console.log(`끝: 계정 17개와 더미 데이터를 만들었어요 (${Math.round((Date.now() - started) / 1000)}초)`);

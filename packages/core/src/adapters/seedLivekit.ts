@@ -7,6 +7,7 @@ export function createSeedLiveKit(): LiveKitPort {
     token: async () => "",
     isPublishing: async () => false,
     isInRoom: async () => false,
+    countViewers: async () => 0,
     closeRoom: async () => undefined,
     receiveWebhook: async () => {
       throw new Error("시드용이라 웹훅을 받지 않아요");

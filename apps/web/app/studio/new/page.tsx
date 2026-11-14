@@ -1,9 +1,10 @@
 "use client";
-import { api, TITLE_MAX, type SourceType } from "@nabi/shared";
+import { api, CATEGORIES, DEFAULT_CATEGORY, TITLE_MAX, type CategoryId, type SourceType } from "@nabi/shared";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { useRequireLogin } from "@/entities/session/session";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
+import { CategoryIcon } from "@/widgets/home/category";
 import { Button, cx, Field, HelpTip, Input, ScreenShareIcon, Switch, VideoIcon } from "@/shared/ui";
 
 // 휴대폰 브라우저에는 화면 공유가 없다(4-3).
@@ -17,6 +18,7 @@ export default function NewBroadcastPage() {
   const [titleInput, setTitle] = useState<string | null>(null);
   const [sourceChoice, setSource] = useState<SourceType | null>(null);
   const [withCamera, setWithCamera] = useState(false);
+  const [category, setCategory] = useState<CategoryId>(DEFAULT_CATEGORY);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -35,7 +37,7 @@ export default function NewBroadcastPage() {
           setBusy(true);
           setError("");
           try {
-            const { id } = await apiFetch(api.createBroadcast, { title: title.trim(), sourceType: source, withCamera: source === "screen" && withCamera });
+            const { id } = await apiFetch(api.createBroadcast, { title: title.trim(), sourceType: source, withCamera: source === "screen" && withCamera, category });
             router.push(`/studio/${id}`);
           } catch (err) {
             setError(err instanceof ApiError ? err.message : "잠시 뒤에 다시 시도해 주세요");
@@ -49,6 +51,23 @@ export default function NewBroadcastPage() {
             {title.length}/{TITLE_MAX}
           </span>
         </Field>
+        <div className="flex flex-col gap-2">
+          <span className="text-heading-16">카테고리</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="카테고리">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={category === c.id}
+                onClick={() => setCategory(c.id)}
+                className={cx("flex h-10 items-center gap-2 rounded-full px-4 text-body-16", category === c.id ? "border-2 border-accent bg-raised" : "border border-line bg-surface hover:border-strong")}
+              >
+                <CategoryIcon id={c.id} size={16} />
+                {c.id}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex flex-col gap-2">
           <span className="text-heading-16">송출 방식</span>
           <div className="flex flex-col gap-3 md:flex-row">

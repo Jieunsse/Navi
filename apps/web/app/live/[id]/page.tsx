@@ -88,7 +88,8 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             <Avatar name={b.ownerNickname} size="sm" live={b.status === "live"} />
             <span className="text-heading-16">{b.ownerNickname}</span>
             <span className="min-w-0 flex-1 truncate text-caption-12 text-muted">
-              {sourceLabel[b.sourceType]}
+              {b.category} · {sourceLabel[b.sourceType]}
+              {b.status === "live" && ` · ${b.viewerCount.toLocaleString("ko-KR")}명 시청`}
               {b.startedAt && ` · ${formatTime(b.startedAt)} 시작`}
               {b.donationTotal > 0 && ` · 후원 ${b.donationTotal.toLocaleString()}꿀`}
             </span>

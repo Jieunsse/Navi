@@ -1,5 +1,5 @@
 "use client";
-import { READY_VISIBLE_MS, type BroadcastStatus, type SourceType } from "@nabi/shared";
+import { asCategory, READY_VISIBLE_MS, type CategoryId, type BroadcastStatus, type SourceType } from "@nabi/shared";
 import { collection, doc, limit, onSnapshot, orderBy, query, Timestamp, where, type DocumentData } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { firestore } from "@/shared/lib/firebase";
@@ -11,6 +11,9 @@ export type LiveBroadcast = {
   title: string;
   sourceType: SourceType;
   withCamera: boolean;
+  category: CategoryId;
+  /** 지금 보고 있는 시청자 수(서버가 웹훅마다 다시 센 값) */
+  viewerCount: number;
   status: BroadcastStatus;
   createdAt: Date;
   startedAt: Date | null;
@@ -29,6 +32,8 @@ function fromDoc(id: string, d: DocumentData): LiveBroadcast {
     title: d.title,
     sourceType: d.sourceType,
     withCamera: d.withCamera ?? false,
+    category: asCategory(d.category),
+    viewerCount: d.viewerCount ?? 0,
     status: d.status,
     createdAt: toDate(d.createdAt) ?? new Date(),
     startedAt: toDate(d.startedAt),
