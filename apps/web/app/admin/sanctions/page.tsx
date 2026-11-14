@@ -1,6 +1,6 @@
 "use client";
 import type { ApiRes } from "@nabi/shared";
-import { moderationApi, type AdminUser } from "@nabi/shared/moderation.ts";
+import { moderationApi, SANCTION_LABEL, SANCTION_STATUS_LABEL, type AdminUser } from "@nabi/shared/moderation.ts";
 import { useCallback, useEffect, useState } from "react";
 import { AdminGate } from "@/features/admin/AdminGate";
 import { PageHead } from "@/features/admin/adminUi";
@@ -16,16 +16,30 @@ function Body() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<AdminUser | null>(null);
-  const load = useCallback(() => apiFetch(moderationApi.adminSanctions).then((r) => setItems(r.items), () => setItems([])), []);
+  const load = useCallback(
+    () =>
+      apiFetch(moderationApi.adminSanctions).then(
+        (r) => setItems(r.items),
+        () => setItems([]),
+      ),
+    [],
+  );
   useEffect(() => {
     void load();
-    void apiFetch(moderationApi.adminUsers).then((r) => setUsers(r.items), () => setUsers([]));
+    void apiFetch(moderationApi.adminUsers).then(
+      (r) => setUsers(r.items),
+      () => setUsers([]),
+    );
   }, [load]);
 
   const key = q.trim().toLowerCase();
   const found = key ? users.filter((u) => `${u.nickname} ${u.email ?? ""}`.toLowerCase().includes(key)).slice(0, 8) : [];
-  const active = items?.filter((s) => s.status === "active") ?? [];
-  const past = items?.filter((s) => s.status !== "active") ?? [];
+  const [listQ, setListQ] = useState("");
+  const [kind, setKind] = useState("");
+  const [status, setStatus] = useState("active");
+  const listKey = listQ.trim().toLowerCase();
+  const shown = (items ?? []).filter((s) => (!kind || s.kind === kind) && (!status || s.status === status) && (!listKey || `${s.userNickname} ${s.reason}`.toLowerCase().includes(listKey)));
+  const selectCls = "h-10 rounded-sm border border-line bg-raised px-3 text-body-16";
   const done = () => {
     setPicked(null);
     setQ("");
@@ -39,7 +53,11 @@ function Body() {
         <h2 className="text-heading-16">제재 걸기</h2>
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="닉네임이나 이메일로 찾기" aria-label="사용자 검색" />
         {found.map((u) => (
-          <button key={u.uid} onClick={() => setPicked(u)} className={cx("flex flex-col rounded-lg px-4 py-3 text-left text-body-16", picked?.uid === u.uid ? "bg-raised" : "bg-surface hover:bg-hover")}>
+          <button
+            key={u.uid}
+            onClick={() => setPicked(u)}
+            className={cx("flex flex-col rounded-lg px-4 py-3 text-left text-body-16", picked?.uid === u.uid ? "bg-raised" : "bg-surface hover:bg-hover")}
+          >
             <b>{u.nickname}</b>
             <span className="text-caption-12 text-subtle">{u.email ?? "이메일 가림"}</span>
           </button>
@@ -55,12 +73,28 @@ function Body() {
         )}
       </section>
       <section className="flex flex-col gap-2">
-        <h2 className="text-heading-16">적용 중인 제재</h2>
-        <SanctionList items={active} onDone={() => void load()} empty="적용 중인 제재가 없어요" />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-heading-16">지난 제재</h2>
-        <SanctionList items={past} onDone={() => void load()} empty="지난 제재가 없어요" />
+        <h2 className="text-heading-16">제재 목록</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input value={listQ} onChange={(e) => setListQ(e.target.value)} placeholder="닉네임이나 사유로 찾기" aria-label="제재 검색" className="max-w-xs" />
+          <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="제재 종류" className={selectCls}>
+            <option value="">모든 종류</option>
+            {Object.entries(SANCTION_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="제재 상태" className={selectCls}>
+            <option value="">모든 상태</option>
+            {Object.entries(SANCTION_STATUS_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+          {items && <span className="text-caption-12 text-subtle">{shown.length}건</span>}
+        </div>
+        <SanctionList items={shown} onDone={() => void load()} empty="조건에 맞는 제재가 없어요" />
       </section>
     </div>
   );
