@@ -253,6 +253,34 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "reporterId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "donations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "streamerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "delivered",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "status",
           "order": "ASCENDING"
         },
@@ -272,7 +300,7 @@
         },
         {
           "fieldPath": "startAt",
-          "order": "ASCENDING"
+          "order": "DESCENDING"
         }
       ]
     },
