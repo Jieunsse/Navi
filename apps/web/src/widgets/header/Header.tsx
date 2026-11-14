@@ -170,7 +170,10 @@ function Sidebar({ onClose, path }: { onClose: () => void; path: string }) {
               <Link key={b.id} href={`/live/${b.id}`} className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-hover">
                 <Avatar name={b.ownerNickname} live />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-body-16">{b.ownerNickname}</span>
+                  <span className="flex items-center gap-1">
+                    <span className="min-w-0 truncate text-body-16">{b.ownerNickname}</span>
+                    {b.seedData && <span className="inline-flex items-center rounded-xs bg-raised px-1 text-badge-12 text-muted">예시</span>}
+                  </span>
                   <span className="block truncate text-caption-12 text-muted">{b.title}</span>
                 </span>
                 <span className="size-2 shrink-0 rounded-full bg-live" aria-hidden />

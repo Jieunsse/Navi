@@ -90,8 +90,9 @@ function BroadcastCard({ b }: { b: LiveBroadcast }) {
     <Link href={`/live/${b.id}`} className="group flex gap-3 md:flex-col">
       <div className="relative grid aspect-video w-32 shrink-0 place-items-center overflow-hidden rounded-sm bg-raised text-subtle md:w-full">
         {b.sourceType === "camera" ? <VideoIcon size={24} /> : <RadioIcon size={24} />}
-        <span className="absolute left-2 top-2 md:left-3 md:top-3">
+        <span className="absolute left-2 top-2 flex gap-1 md:left-3 md:top-3">
           <StatusBadge status={b.status} />
+          {b.seedData && <span className="inline-flex items-center rounded-xs bg-raised px-2 py-1 text-badge-12 text-muted">예시</span>}
         </span>
       </div>
       <div className="flex min-w-0 flex-1 gap-3">

@@ -98,7 +98,7 @@ export function NotificationBell({ path }: { path: string }) {
               모두 읽음
             </button>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
             {items === null ? (
               <div className="grid place-items-center py-10">
                 <Spinner />
@@ -111,11 +111,15 @@ export function NotificationBell({ path }: { path: string }) {
                   key={n.id}
                   type="button"
                   onClick={() => pick(n)}
-                  className={`flex w-full items-start gap-3 rounded-md px-2 py-3 text-left ${n.read ? "" : "bg-hover"} ${n.href || !n.read ? "hover:bg-pressed" : "cursor-default"}`}
+                  className={`flex w-full items-start gap-3 rounded-md px-3 py-3 text-left transition-colors ${n.href || !n.read ? "hover:bg-hover" : "cursor-default"}`}
                 >
                   <span className="mt-0.5 shrink-0 text-text">{ICON[n.kind]}</span>
-                  <span className="min-w-0 flex-1 break-words text-body-16">{n.text}</span>
-                  <span className="shrink-0 whitespace-nowrap text-caption-12 text-subtle">{ago(n.createdAt)}</span>
+                  <span className={`min-w-0 flex-1 break-words text-body-16 ${n.read ? "text-muted" : ""}`}>{n.text}</span>
+                  <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-caption-12 text-subtle">
+                    {ago(n.createdAt)}
+                    {/* 배경 대신 점으로 읽지 않은 알림을 표시한다 */}
+                    {!n.read && <span aria-label="읽지 않음" className="size-1.5 rounded-full bg-live" />}
+                  </span>
                 </button>
               ))
             )}

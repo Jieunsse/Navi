@@ -16,6 +16,8 @@ export type LiveBroadcast = {
   startedAt: Date | null;
   endedAt: Date | null;
   donationTotal: number;
+  /** 시드가 만든 예시 방송이면 true. 영상은 나오지 않는다. */
+  seedData: boolean;
 };
 
 const toDate = (t: unknown) => (t instanceof Timestamp ? t.toDate() : null);
@@ -32,6 +34,7 @@ function fromDoc(id: string, d: DocumentData): LiveBroadcast {
     startedAt: toDate(d.startedAt),
     endedAt: toDate(d.endedAt),
     donationTotal: d.donationTotal ?? 0,
+    seedData: d.seedData === true,
   };
 }
 

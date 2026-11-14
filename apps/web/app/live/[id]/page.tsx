@@ -50,7 +50,13 @@ export default function WatchPage({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
         ) : (
-          <Player id={id} live={b.status === "live"} onRoom={setRoom} />
+          b.seedData ? (
+            <div className="flex aspect-video w-full items-center justify-center bg-screen px-4 text-center lg:rounded-md">
+              <p className="text-heading-20 text-on-video">예시 방송이라 영상이 나오지 않아요</p>
+            </div>
+          ) : (
+            <Player id={id} live={b.status === "live"} onRoom={setRoom} />
+          )
         )}
         <div className="flex flex-col gap-2 px-4 lg:p-0">
           <div className="flex items-center gap-2">

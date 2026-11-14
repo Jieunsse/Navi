@@ -295,6 +295,38 @@ export function seedUseCases(deps: SeedDeps) {
     if (addStats) await users().doc(spec.owner).update({ broadcastCount: FieldValue.increment(1), totalBroadcastMs: FieldValue.increment(durationMs) });
   }
 
+  /**
+   * 지금 방송 중인 예시 방송 하나. 송출은 없고(시드 LiveKit이 건너뜀) 문서와 채팅만 있다.
+   * 채팅은 실제 채팅 유스케이스로 넣은 뒤 시작 시각과 지금 사이에 고르게 옮긴다.
+   */
+  async function liveScene(spec: { id: string; owner: string; title: string; sourceType: "screen" | "camera"; minutesAgo: number }, lines: [string, string][]) {
+    const bref = db().collection("broadcasts").doc(spec.id);
+    const owner = await viewerOf(spec.owner);
+    const now = Timestamp.now();
+    const startMs = now.toMillis() - spec.minutesAgo * 60_000;
+    await bref.set({
+      ownerId: owner.uid,
+      ownerNickname: owner.user.nickname,
+      title: spec.title,
+      sourceType: spec.sourceType,
+      withCamera: false,
+      status: "live",
+      recordingEnabled: false,
+      roomName: spec.id,
+      donationTotal: 0,
+      donationCount: 0,
+      createdAt: ts(startMs - 2 * 60_000),
+      startedAt: ts(startMs),
+      endedAt: null,
+      seedData: true,
+    });
+    for (const [i, [uid, text]] of lines.entries()) {
+      await chat.send(await viewerOf(uid), spec.id, { messageId: `${spec.id}-c${i + 1}`, content: text });
+      await bref.collection("chatters").doc(uid).delete(); // 도배 1초 제한 기록은 남기지 않는다
+      await bref.collection("comments").doc(`${spec.id}-c${i + 1}`).update({ createdAt: ts(startMs + Math.floor(((now.toMillis() - startMs) * (i + 1)) / (lines.length + 1))) });
+    }
+  }
+
   /** 등급, 방송 횟수, 누적 시간, 받은 후원 건수를 직접 쓴다. 샘플 방송자와 부분 초기화만 쓴다(06 결정 28). */
   async function writeGrade(uid: string, grade: string, shareRate: number, stats: { broadcastCount: number; totalBroadcastMs: number; donationReceivedCount: number }, note?: string) {
     await users().doc(uid).update({ grade, ...stats });
@@ -399,6 +431,33 @@ export function seedUseCases(deps: SeedDeps) {
       await s.donate(U.jiwoo, 2000, "잘 보고 가요");
     });
     log("지난 방송 5개");
+
+    // 홈이 비어 보이지 않게 방송 중인 예시 방송 4개를 둔다. 테스트 방송자는 주인으로 쓰지 않는다(30분 제한).
+    await liveScene({ id: "seed-bc-live-1", owner: U.harin, title: "예시 방송 · 저녁 메뉴 같이 정해요", sourceType: "camera", minutesAgo: 12 }, [
+      [U.harin, "오늘 저녁 뭐 먹을지 같이 정해 봐요"],
+      [U.viewer, "저는 떡볶이요!"],
+      [U.jiwoo, "비 오는 날엔 칼국수죠"],
+      [U.harin, "둘 다 좋네요, 투표해 볼까요"],
+    ]);
+    await liveScene({ id: "seed-bc-live-2", owner: U.minsu, title: "예시 방송 · 랭크 게임 도전기", sourceType: "screen", minutesAgo: 35 }, [
+      [U.minsu, "이번 판은 꼭 이길게요"],
+      [U.seoyeon, "화이팅!"],
+      [U.viewer, "방금 플레이 멋졌어요"],
+      [U.minsu, "고마워요, 한 판 더 갑니다"],
+      [U.jiwoo, "다음 판도 기대돼요"],
+    ]);
+    await liveScene({ id: "seed-bc-live-3", owner: U.jiwoo, title: "예시 방송 · 같이 공부해요", sourceType: "screen", minutesAgo: 5 }, [
+      [U.jiwoo, "오늘은 영어 단어 50개 외워요"],
+      [U.seoyeon, "저도 같이 할게요"],
+      [U.viewer, "집중 잘 되는 음악 추천해 주세요"],
+    ]);
+    await liveScene({ id: "seed-bc-live-4", owner: U.seoyeon, title: "예시 방송 · 기타 연습 시간", sourceType: "camera", minutesAgo: 48 }, [
+      [U.seoyeon, "오늘은 쉬운 곡부터 쳐 볼게요"],
+      [U.harin, "소리 좋아요"],
+      [U.viewer, "어떤 곡이에요?"],
+      [U.seoyeon, "잔잔한 곡이에요"],
+    ]);
+    log("방송 중 예시 방송 4개");
 
     // 신고와 제재. 운영 처리는 시드 실행자(테스트 운영자 계정)로 한다.
     const runner = seedRunner();

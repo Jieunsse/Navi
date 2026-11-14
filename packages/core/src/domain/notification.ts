@@ -39,9 +39,12 @@ export const settlementHeld = (reason: string, refId: string | null): Notificati
 
 export const promoted = (to: Grade): NotificationInput => ({ kind: "promotion", text: `${GRADE_LABEL[to]} 등급이 됐어요`, href: "/me/grade" });
 
+/** 받침이 있으면 "이", 없으면 "가"(채팅이, 방송이, 사용자가) */
+const iGa = (word: string) => ((word.charCodeAt(word.length - 1) - 0xac00) % 28 > 0 ? "이" : "가");
+
 export const reportResolved = (label: string, acted: boolean, refId: string): NotificationInput => ({
   kind: "report",
-  text: acted ? `신고하신 ${label}에 조치했어요` : `신고하신 ${label}은(는) 기각됐어요`,
+  text: acted ? `신고하신 ${label}에 조치했어요` : `신고하신 ${label}${iGa(label)} 기각됐어요`,
   href: "/me/reports",
   refId,
 });

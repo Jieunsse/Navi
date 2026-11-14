@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { donationReceived, isFresh, missionDelivered, missionResult, promoted, operatorAction } from "./notification.ts";
+import { donationReceived, isFresh, missionDelivered, missionResult, promoted, operatorAction, reportResolved } from "./notification.ts";
 
 test("익명 후원은 닉네임 대신 익명이라고 쓴다", () => {
   assert.equal(donationReceived("하린", true, 5000, "d1").text, "익명님이 5,000꿀을 후원했어요");
@@ -20,4 +20,9 @@ test("30일이 지난 알림은 보여주지 않는다", () => {
   const now = Date.UTC(2026, 10, 30);
   assert.equal(isFresh(now - 29 * 86_400_000, now), true);
   assert.equal(isFresh(now - 30 * 86_400_000, now), false);
+});
+
+test("신고 기각 알림은 받침에 맞는 조사를 쓴다", () => {
+  assert.equal(reportResolved("채팅", false, "r").text, "신고하신 채팅이 기각됐어요");
+  assert.equal(reportResolved("사용자", false, "r").text, "신고하신 사용자가 기각됐어요");
 });
