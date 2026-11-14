@@ -8,7 +8,7 @@ import { useHomeBroadcasts } from "@/entities/broadcast/model";
 import { loginHref, useSession } from "@/entities/session/session";
 import { apiFetch } from "@/shared/api/apiFetch";
 import { useStored } from "@/shared/lib/stored";
-import { Avatar, cx, HistoryIcon, HoneyIcon, RadioIcon, ThemeToggle, VideoIcon } from "@/shared/ui";
+import { Avatar, cx, HistoryIcon, HoneyIcon, IconButton, RadioIcon, RefreshIcon, ThemeToggle, VideoIcon } from "@/shared/ui";
 import { CategoryIcon } from "../home/category";
 
 export const SIDEBAR_KEY = "nabi-sidebar";
@@ -39,7 +39,7 @@ export function SidebarDock() {
 }
 
 export function SidebarBody({ path, collapsed = false, mobile = false }: { path: string; collapsed?: boolean; mobile?: boolean }) {
-  const { live, ready } = useHomeBroadcasts();
+  const { live, ready, refreshing, refresh } = useHomeBroadcasts();
   const { me } = useSession();
   const [balance, setBalance] = useState<number | null>(null);
   useEffect(() => {
@@ -69,7 +69,12 @@ export function SidebarBody({ path, collapsed = false, mobile = false }: { path:
         ))}
       </nav>
       <section className="flex flex-col gap-1 border-b border-line pb-2">
-        {!collapsed && <h2 className="px-3 py-1 text-caption-12 text-subtle">인기 카테고리</h2>}
+        {!collapsed && (
+          <div className="flex items-center justify-between">
+            <h2 className="px-3 py-1 text-caption-12 text-subtle">인기 카테고리</h2>
+            <RefreshButton label="인기 카테고리 새로고침" refreshing={refreshing} onClick={refresh} />
+          </div>
+        )}
         {cats.map((c) => (
           <Link key={c.id} href={`/?category=${encodeURIComponent(c.id)}#category`} title={collapsed ? c.id : undefined} aria-label={collapsed ? c.id : undefined} className={cx("flex h-10 items-center gap-3 rounded-md px-3 text-body-16 text-muted hover:bg-hover hover:text-text", collapsed && "justify-center px-0")}>
             <CategoryIcon id={c.id} size={20} />
@@ -84,7 +89,10 @@ export function SidebarBody({ path, collapsed = false, mobile = false }: { path:
       </section>
       {!collapsed && (
         <section className="flex flex-col gap-1">
-          <h2 className="px-3 py-1 text-caption-12 text-subtle">지금 방송 중</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="px-3 py-1 text-caption-12 text-subtle">지금 방송 중</h2>
+            <RefreshButton label="지금 방송 중 새로고침" refreshing={refreshing} onClick={refresh} />
+          </div>
           {live?.length ? (
             live.slice(0, 5).map((b) => (
               <Link key={b.id} href={`/live/${b.id}`} className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-hover">
@@ -124,6 +132,15 @@ export function SidebarBody({ path, collapsed = false, mobile = false }: { path:
         </Link>
       )}
     </>
+  );
+}
+
+/** 제목 옆 새로고침 버튼. 받는 동안 아이콘이 돈다. */
+function RefreshButton({ label, refreshing, onClick }: { label: string; refreshing: boolean; onClick: () => void }) {
+  return (
+    <IconButton label={label} title={label} onClick={onClick} disabled={refreshing} aria-busy={refreshing} className="size-8 text-subtle">
+      <RefreshIcon size={16} className={refreshing ? "animate-spin" : undefined} />
+    </IconButton>
   );
 }
 

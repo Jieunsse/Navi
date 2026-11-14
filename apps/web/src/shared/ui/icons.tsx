@@ -93,6 +93,7 @@ export const HelpIcon = (p: P) => (
     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
   </Icon>
 );
+export const RefreshIcon = (p: P) => <Icon {...p}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5" /></Icon>;
 export const CheckIcon = (p: P) => <Icon {...p}><path d="M20 6 9 17l-5-5" /></Icon>;
 
 /** Google 로고. 브랜드 규정상 색을 바꾸지 않는다. */
