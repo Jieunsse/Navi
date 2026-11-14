@@ -9,7 +9,7 @@ const ops = Object.entries(doc.paths as Record<string, Record<string, Op>>).flat
 const groups = Map.groupBy(ops, (o) => o.op.tags[0] ?? "기타");
 const json = (v: unknown) => JSON.stringify(v, null, 2);
 
-export const metadata = { title: "나비 API 문서" };
+export const metadata = { title: "API 문서" };
 
 export default function ApiDocsPage() {
   return (
