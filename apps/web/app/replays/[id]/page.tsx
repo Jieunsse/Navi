@@ -36,7 +36,6 @@ export default function ReplayPage({ params }: { params: Promise<{ id: string }>
         <div className="flex flex-col gap-2 px-4 lg:p-0">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-8 items-center rounded-full border border-line bg-raised px-3 text-caption-12 text-muted">다시보기</span>
-            {r.isExample && <span className="inline-flex h-8 items-center rounded-full border border-strong px-3 text-caption-12 text-muted">예시</span>}
             <h1 className="min-w-0 flex-1 truncate text-heading-16 lg:text-heading-20">{r.broadcastTitle}</h1>
           </div>
           <div className="flex items-center gap-2">

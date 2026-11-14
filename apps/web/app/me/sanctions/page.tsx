@@ -81,7 +81,7 @@ export default function MySanctionsPage() {
 
   if (!me || !items) return <div className="grid flex-1 place-items-center"><Spinner /></div>;
   return (
-    <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
       <h1 className="text-heading-28">제재 내역</h1>
       {items.length === 0 && <EmptyState title="받은 제재가 없어요" />}
       <div className="flex flex-col gap-2">

@@ -30,7 +30,7 @@ export default function MePage() {
   }, [me]);
   if (!me) return <div className="grid flex-1 place-items-center"><Spinner /></div>;
   return (
-    <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-heading-28">내 정보</h1>
         <Link href="/me/grade" className={buttonCls({ variant: "secondary" })}>

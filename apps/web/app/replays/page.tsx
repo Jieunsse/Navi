@@ -47,10 +47,7 @@ export default function ReplaysPage() {
                     <Avatar name={r.ownerNickname} />
                   </span>
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <p className="line-clamp-2 text-heading-16">
-                      {r.isExample && <span className="mr-2 rounded-full border border-strong px-2 py-0.5 align-middle text-badge-12 text-muted">예시</span>}
-                      {r.broadcastTitle}
-                    </p>
+                    <p className="line-clamp-2 text-heading-16">{r.broadcastTitle}</p>
                     <p className="truncate text-caption-12 text-muted">{r.ownerNickname}</p>
                     <p className="truncate text-caption-12 text-subtle">
                       {formatTime(r.startedAt)}

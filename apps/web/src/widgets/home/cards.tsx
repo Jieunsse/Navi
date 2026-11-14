@@ -20,7 +20,7 @@ export function Thumb({ hue, icon, children, className }: { hue: number; icon: R
 }
 
 export function ViewerBadge({ count }: { count: number }) {
-  return <span className="inline-flex items-center rounded-xs bg-overlay px-2 py-1 text-badge-12 text-on-video">{fmtCount(count)}명</span>;
+  return <span className="inline-flex items-center rounded-xs bg-overlay px-2 py-1 text-badge-12 font-bold text-on-video">{fmtCount(count)}명</span>;
 }
 
 function Badges({ b }: { b: LiveBroadcast }) {
@@ -28,7 +28,6 @@ function Badges({ b }: { b: LiveBroadcast }) {
     <span className="absolute left-2 top-2 flex gap-1">
       <StatusBadge status={b.status} />
       {b.status === "live" && <ViewerBadge count={b.viewerCount} />}
-      {b.seedData && <span className="inline-flex items-center rounded-xs bg-raised px-2 py-1 text-badge-12 text-muted">예시</span>}
     </span>
   );
 }
@@ -62,7 +61,6 @@ export function ReplayCard({ r, className }: { r: Recording; className?: string 
       <Thumb hue={categoryHue("잡담" satisfies CategoryId)} icon={<VideoIcon size={32} />}>
         <span className="absolute left-2 top-2 flex gap-1">
           <StatusBadge status="ended" />
-          {r.isExample && <span className="inline-flex items-center rounded-xs bg-raised px-2 py-1 text-badge-12 text-muted">예시</span>}
         </span>
         {r.durationMs !== null && <span className="absolute bottom-2 right-2 rounded-xs bg-overlay px-2 py-1 text-badge-12">{formatElapsed(r.durationMs)}</span>}
       </Thumb>

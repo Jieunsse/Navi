@@ -39,7 +39,7 @@ export default function StudioPage() {
   const tabs = <Tabs label="내 방송 관리" value={tab} onChange={setTab} items={[{ value: "broadcasts", label: "방송" }, { value: "bans", label: "활동 제한" }]} />;
   if (tab === "bans")
     return (
-      <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
         <h1 className="text-heading-28">내 방송 관리</h1>
         {tabs}
         <ChatBansPanel />
@@ -75,7 +75,7 @@ export default function StudioPage() {
   const totalEarning = ended.flatMap((i) => i.donations).concat(deleted).reduce((s, d) => s + d.earning, 0);
 
   return (
-    <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-heading-28">내 방송 관리</h1>
         <Link href="/studio/new" className={buttonCls({ variant: "live" })}>

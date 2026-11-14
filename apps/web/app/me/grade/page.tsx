@@ -27,7 +27,7 @@ export default function GradePage() {
   const shown = tab ?? info.grade;
   const b = GRADE_BENEFITS[shown];
   return (
-    <div className="flex w-full flex-col gap-8 px-4 py-6 md:p-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-6 md:p-8">
       <h1 className="text-heading-28">내 등급</h1>
 
       <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 md:p-8">
