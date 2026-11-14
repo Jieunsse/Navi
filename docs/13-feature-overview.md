@@ -8,7 +8,7 @@
 이 문서는 07 기능 명세를 줄인 요약이다. 07은 길어서 한 번에 읽기 어렵다. 그래서 기능 목록, 공모 요구사항 대조, 기능별 핵심 규칙, 화면 주소, API 주소를 이 문서 하나에 모았다.
 
 - 화면 시안은 [08 화면 설계서](08-screen-spec.md)의 화면 묶음(A~O)에 있다. 각 묶음은 피그마 와이어프레임으로 이어진다.
-- 꿀 가격, 수익 배분, 정산 같은 돈 이야기는 [11 사업 모델](11-business-model.md)에 있다.
+- 꿀 가격, 수익 배분, 정산 같은 돈 이야기는 [11 수익 구조(BM)](11-business-model.md)에 있다.
 - 신고, 제재, 충전 취소 같은 운영 규칙은 [12 운영 정책](12-policy.md)에 있다.
 - 심사자가 기능을 확인하는 순서는 [README의 기능 확인 순서](../README.md#기능-확인-순서)에 있다.
 - 각 기능의 확인 시나리오는 [07 10장 완료 기준과 심사 시나리오](07-feature-spec.md#10-완료-기준과-심사-시나리오)에 있다.
@@ -172,7 +172,7 @@ API는 `apps/web/app/api` 아래에 실제로 있는 주소만 적었다. `[id]`
 - 미션 후원은 상금을 묶어 두고, 방송자가 수락, 거절, 성공, 실패를 고른다. 성공하면 상금 전부, 실패하면 상금의 20%인 응원금만 방송자에게 간다.
 - 결제는 토스페이먼츠 테스트 모드다. 잔액이 모자라면 "충전하고 후원하기"로 충전과 후원을 한 번에 한다.
 - 서버는 결제 금액이 주문 금액과 같은지 확인하고, 승인 결과가 "완료"일 때만 꿀을 넣는다. 같은 결제가 두 번 알려 와도 꿀은 한 번만 들어간다.
-- 충전 후 7일 안에 하나도 쓰지 않은 충전은 직접 취소할 수 있다. 그 밖의 쓰지 않은 꿀은 환급을 신청한다. 충전, 취소, 환급의 돈 규칙은 [11 사업 모델](11-business-model.md)과 [12 운영 정책](12-policy.md)에 있다.
+- 충전 후 7일 안에 하나도 쓰지 않은 충전은 직접 취소할 수 있다. 그 밖의 쓰지 않은 꿀은 환급을 신청한다. 충전, 취소, 환급의 돈 규칙은 [11 수익 구조(BM)](11-business-model.md)과 [12 운영 정책](12-policy.md)에 있다.
 - API: `POST /api/broadcasts/[id]/donations`, `GET /api/broadcasts/[id]/missions`, `POST /api/broadcasts/[id]/missions`, `POST /api/broadcasts/[id]/missions/[missionId]/[action]`(action은 accept, reject, success, fail, expire), `GET /api/honey`, `POST /api/honey/verify`, `POST /api/charges`, `POST /api/charges/confirm`, `POST /api/charges/fail`, `POST /api/charges/[id]/cancel`, `POST /api/refunds`, `POST /api/webhooks/toss`
 - 원문: [07 4-8](07-feature-spec.md#4-8-후원)
 
@@ -214,7 +214,7 @@ API는 `apps/web/app/api` 아래에 실제로 있는 주소만 적었다. `[id]`
 - 후원을 확정하는 순간의 등급과 배분 비율을 후원 기록에 저장한다. 그래서 나중에 등급이 올라도 지난 후원의 예상 수익은 바뀌지 않는다.
 - 정산은 월 1회 자동이다. 방송자는 조회만 하고 신청 버튼은 없다.
 - 정산 계산과 확정은 실제로 만들었다. 송금과 예약 작업은 목업이다. 운영자 화면의 "월 정산 지금 실행(테스트)" 버튼으로 같은 작업을 실행한다.
-- 등급과 정산의 돈 규칙은 [11 사업 모델](11-business-model.md)에 있다.
+- 등급과 정산의 돈 규칙은 [11 수익 구조(BM)](11-business-model.md)에 있다.
 - API: `GET /api/me/grade`, `GET /api/me/settlements`, `GET /api/jobs/monthly-settlement`(예약 작업 실행기가 비밀 값으로 부르는 입구), `POST /api/admin/settlements/run-test`
 - 원문: [07 4-12](07-feature-spec.md#4-12-방송자-등급과-정산)
 
