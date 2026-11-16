@@ -78,3 +78,29 @@ export function broadcastDuration(rows: readonly { startedAt: Date | null; ended
 type ReportStatus = "pending" | "actioned" | "dismissed";
 /** 신고 묶음의 상태. 접수된 것이 하나라도 있으면 접수, 아니면 가장 최근 신고의 결과다. rows는 최근 것이 앞이다. */
 export const reportGroupStatus = (rows: readonly { status: ReportStatus }[]): ReportStatus => (rows.some((r) => r.status === "pending") ? "pending" : (rows[0]?.status ?? "pending"));
+
+/**
+ * 한 사용자가 받은 신고 전부로 신고 대상 요약(reportTargets 문서)을 처음부터 다시 계산한다. 신고가 없으면 null이다.
+ * 시간 값은 넘겨받은 것을 그대로 돌려준다(Timestamp든 Date든 toMillis만 있으면 된다).
+ */
+export function reportTargetOf<T extends { toMillis(): number }>(
+  rows: readonly { status: ReportStatus; reason: string; createdAt: T; processedAt?: T | null }[],
+) {
+  if (!rows.length) return null;
+  const byNewest = [...rows].sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+  const pending = byNewest.filter((r) => r.status === "pending");
+  const status = reportGroupStatus(byNewest);
+  const processed = byNewest.map((r) => r.processedAt).filter((t): t is T => !!t);
+  return {
+    pendingCount: pending.length,
+    totalCount: rows.length,
+    firstPendingAt: pending.length ? pending[pending.length - 1]!.createdAt : null,
+    lastReportAt: byNewest[0]!.createdAt,
+    latestReason: byNewest[0]!.reason,
+    status,
+    resolvedAt: status === "pending" || !processed.length ? null : processed.reduce((a, b) => (b.toMillis() > a.toMillis() ? b : a)),
+  };
+}
+
+/** 회원 검색어 종류. 이메일은 @가 있고, 회원 ID는 공백 없는 영문·숫자 20자 이상(시드는 하이픈 포함)이다. 그 외는 닉네임 앞부분이다. */
+export const userSearchKind = (q: string): "email" | "id" | "nickname" => (q.includes("@") ? "email" : /^[A-Za-z0-9_-]{20,}$/.test(q) ? "id" : "nickname");

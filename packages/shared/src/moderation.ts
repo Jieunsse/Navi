@@ -109,13 +109,21 @@ const userBrief = z.object({
 });
 export type AdminUser = z.output<typeof userBrief>;
 
+/** 회원 목록: 검색어(q)가 있으면 filter는 무시한다. GET이라 값은 모두 문자열로 온다. */
+export const USER_FILTERS = ["sanctioned", "held", "reported", "test"] as const;
+const adminUsersReq = z.object({ q: z.string().trim().max(100).optional(), filter: z.enum(USER_FILTERS).optional(), cursor: z.string().optional() });
+const adminUserRow = userBrief.extend({ createdAt: z.string().nullable(), formerNickname: z.string().optional() });
+export type AdminUserRow = z.output<typeof adminUserRow>;
+
 export const adminReportGroupSchema = z.object({
   userId: z.string(),
   nickname: z.string(),
   masked: z.boolean(),
-  count: z.number(),
+  pendingCount: z.number(),
+  totalCount: z.number(),
   latestReason: reportReasonSchema,
-  firstAt: z.string(),
+  firstPendingAt: z.string().nullable(), // 가장 오래된 접수 신고 시각. 접수가 없으면 null
+  lastReportAt: z.string(),
   status: reportStatusSchema, // 접수된 신고가 하나라도 있으면 pending, 아니면 가장 최근 신고의 결과
 });
 /** 전체 제재 목록(O-6)의 한 줄. 제재 내역에 사용자 이름이 붙는다. */
@@ -194,7 +202,12 @@ export const moderationApi = {
       broadcastMsThisMonth: z.number(),
     }),
   ),
-  adminReports: c("GET", "/api/admin/reports", none, z.object({ items: z.array(adminReportGroupSchema) })),
+  adminReports: c(
+    "GET",
+    "/api/admin/reports",
+    z.object({ status: reportStatusSchema.default("pending"), cursor: z.string().optional() }),
+    z.object({ items: z.array(adminReportGroupSchema), next: z.string().nullable(), counts: z.object({ pending: z.number() }) }),
+  ),
   adminReportDetail: c(
     "GET",
     "/api/admin/reports/:userId",
@@ -202,7 +215,7 @@ export const moderationApi = {
     z.object({ user: userBrief, reports: z.array(adminReportItemSchema), sanctions: z.array(sanctionItemSchema) }),
   ),
   adminResolve: c("POST", "/api/admin/reports/:userId/resolve", resolveSchema, ok),
-  adminUsers: c("GET", "/api/admin/users", none, z.object({ items: z.array(userBrief) })),
+  adminUsers: c("GET", "/api/admin/users", adminUsersReq, z.object({ items: z.array(adminUserRow), next: z.string().nullable() })),
   adminUserDetail: c("GET", "/api/admin/users/:userId", none, z.object({ user: userBrief, sanctions: z.array(sanctionItemSchema), reportCount: z.number(), extra: adminUserExtraSchema })),
   adminSanctions: c("GET", "/api/admin/sanctions", none, z.object({ items: z.array(adminSanctionItemSchema) })),
   adminSanction: c("POST", "/api/admin/users/:userId/sanctions", sanctionInputSchema, ok),

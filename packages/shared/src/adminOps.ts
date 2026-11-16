@@ -76,8 +76,11 @@ export const adminBroadcastSchema = z.object({
   createdAt: z.string(),
   startedAt: z.string().nullable(),
   endedAt: z.string().nullable(),
+  viewerCount: z.number(),
+  pendingReports: z.number(), // 이 방송에 대한 처리 안 된 신고 수
 });
 export type AdminBroadcast = z.output<typeof adminBroadcastSchema>;
+export const adminBroadcastsReqSchema = z.object({ status: z.enum(["live", "ended", "all"]).default("live"), q: z.string().trim().optional(), cursor: z.string().optional() });
 export const forceEndSchema = z.object({ reason: z.string().trim().min(1, "사유를 적어 주세요").max(200, "사유는 200자까지 쓸 수 있어요") });
 
 const c = <Req extends z.ZodType, Res extends z.ZodType>(method: Contract["method"], path: string, req: Req, res: Res) =>
@@ -97,7 +100,7 @@ export const adminOpsApi = {
   adminCharges: c("GET", "/api/admin/charges", none, z.object({ items: z.array(adminChargeSchema) })),
   reconcileCharge: c("POST", "/api/admin/charges/:id/reconcile", none, z.object({ status: z.enum(["canceled", "reverted", "canceling"]) })),
   adminJobs: c("GET", "/api/admin/jobs", none, z.object({ items: z.array(jobRunSchema) })),
-  adminBroadcasts: c("GET", "/api/admin/broadcasts", none, z.object({ items: z.array(adminBroadcastSchema) })),
+  adminBroadcasts: c("GET", "/api/admin/broadcasts", adminBroadcastsReqSchema, z.object({ items: z.array(adminBroadcastSchema), next: z.string().nullable(), counts: z.object({ live: z.number() }) })),
   forceEndBroadcast: c("POST", "/api/admin/broadcasts/:id/end", forceEndSchema, ok),
   privateReplay: c("POST", "/api/admin/broadcasts/:id/private-replay", forceEndSchema, ok),
 } as const;

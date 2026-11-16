@@ -2,7 +2,7 @@ import { REPORT_DAILY_LIMIT, REPORT_REASONS, type ChatBan, type MyReport, type S
 import type { z } from "zod";
 import type { chatBanInputSchema, createReportSchema } from "@nabi/shared/moderation.ts";
 import { db, iso, Timestamp } from "../adapters/firebase.ts";
-import { chatBanEnd, chatBlock, effectiveStatus, kstDayStart, stillBlocked, summarize } from "../domain/moderation.ts";
+import { chatBanEnd, chatBlock, effectiveStatus, kstDayStart, reportTargetOf, stillBlocked, summarize } from "../domain/moderation.ts";
 import { AppError, conflict, forbidden, notFound } from "../errors.ts";
 import type { Viewer } from "./auth.ts";
 
@@ -116,6 +116,16 @@ export function reportLabel(r: Pick<ReportDoc, "targetType" | "snapshot">) {
   return r.targetType === "broadcast" ? `방송 “${s.title}”` : `사용자 ${s.nickname}`;
 }
 
+export const reportTargetRef = (uid: string) => db().collection("reportTargets").doc(uid);
+
+/** 신고 대상 요약을 그 사용자의 신고 전부에서 다시 만든다. 신고가 없으면 요약 문서도 지운다. 시드·보정 스크립트가 쓴다. */
+export async function syncReportTarget(uid: string) {
+  const snap = await db().collection("reports").where("targetUserId", "==", uid).get();
+  const sum = reportTargetOf(snap.docs.map((d) => d.data() as ReportDoc & { processedAt?: Timestamp }));
+  if (sum) await reportTargetRef(uid).set({ userId: uid, ...sum });
+  else await reportTargetRef(uid).delete();
+}
+
 export function moderationUseCases() {
   const reports = () => db().collection("reports");
   return {
@@ -176,7 +186,23 @@ export function moderationUseCases() {
         createdAt: Timestamp.now(),
       };
       try {
-        await reports().doc(`${viewer.uid}_${input.targetType}_${input.targetId}`).create(doc);
+        // 신고와 대상 요약을 한 번에 쓴다. 같은 신고를 또 만들면 create가 code 6으로 실패한다.
+        await fs.runTransaction(async (tx) => {
+          const ref = reportTargetRef(targetUserId);
+          const agg = (await tx.get(ref)).data();
+          const pendingCount = (agg?.pendingCount ?? 0) + 1;
+          tx.create(reports().doc(`${viewer.uid}_${input.targetType}_${input.targetId}`), doc);
+          tx.set(ref, {
+            userId: targetUserId,
+            pendingCount,
+            totalCount: (agg?.totalCount ?? 0) + 1,
+            firstPendingAt: agg && agg.pendingCount > 0 ? agg.firstPendingAt : doc.createdAt,
+            lastReportAt: doc.createdAt,
+            latestReason: doc.reason,
+            status: "pending",
+            resolvedAt: null,
+          });
+        });
       } catch (e) {
         if ((e as { code?: number }).code === 6) throw conflict("ALREADY_REPORTED", "이미 신고했어요");
         throw e;
