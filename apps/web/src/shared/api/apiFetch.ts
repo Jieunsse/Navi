@@ -18,7 +18,8 @@ export async function apiFetch<C extends Contract>(c: C, input?: ApiReq<C>, para
   const hasBody = c.method !== "GET" && c.method !== "DELETE";
   let res: Response;
   try {
-    res = await fetch(fillPath(c.path, params), {
+    const query = c.method === "GET" && input ? new URLSearchParams(Object.entries(input as Record<string, unknown>).filter(([, v]) => v != null && v !== "").map(([k, v]) => [k, String(v)])).toString() : "";
+    res = await fetch(fillPath(c.path, params) + (query && `?${query}`), {
       method: c.method,
       headers: { ...(hasBody && { "content-type": "application/json" }), ...(token && { authorization: `Bearer ${token}` }) },
       body: hasBody ? JSON.stringify(input ?? {}) : undefined,

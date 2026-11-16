@@ -25,7 +25,7 @@ import { chatUseCases } from "./chat.ts";
 import { walletRef, bumpWallet } from "./donation.ts";
 import { honeyUseCases } from "./honey.ts";
 import { missionUseCases } from "./mission.ts";
-import { moderationUseCases, syncSanctionSummary, writeAdminLog } from "./moderation.ts";
+import { moderationUseCases, syncReportTarget, syncSanctionSummary, writeAdminLog } from "./moderation.ts";
 import { notificationUseCases } from "./notification.ts";
 import { recordingUseCases } from "./recording.ts";
 import { refundUseCases, type PayoutFn } from "./refund.ts";
@@ -209,6 +209,8 @@ export function seedUseCases(deps: SeedDeps) {
     await Promise.all([...kept, removeDocs(gone)]);
 
     const byOwner = [["charges", "userId"], ["honeyLedger", "userId"], ["refunds", "userId"], ["reports", "reporterId"], ["sanctions", "userId"], ["appeals", "userId"], ["settlements", "streamerId"], ["nicknames", "uid"]] as const;
+    // 시드 계정이 한 신고가 사라지면 신고 대상 요약이 틀어지므로, 지운 뒤 대상들의 요약을 다시 만든다.
+    const reported = new Set((await byUsers("reports", "reporterId")).map((d) => d.data().targetUserId as string));
     await Promise.all([
       ...byOwner.map(async ([col, field]) => removeDocs(await byUsers(col, field))),
       ...["wallets", "identityVerifications", "payoutAccounts"].map((col) => removeDocs(ALL.map((uid) => ({ ref: fs.collection(col).doc(uid) })))),
@@ -216,6 +218,7 @@ export function seedUseCases(deps: SeedDeps) {
       (async () => removeDocs([...(await fs.collection("jobRuns").where("seedData", "==", true).get()).docs, { ref: fs.collection("jobRuns").doc(SEED_TEST_RUN) }]))(),
     ]);
     await Promise.all(ALL.map((uid) => fs.recursiveDelete(users().doc(uid)))); // 알림, 등급 변경 내역, 활동 제한 포함
+    for (const uid of new Set([...reported, ...ALL])) await syncReportTarget(uid);
   }
 
   // ---- 만들기(4-18)
@@ -939,6 +942,7 @@ export function seedUseCases(deps: SeedDeps) {
       if (!(await ref.get()).exists) await createPracticeReport(r);
       else await ref.update({ status: "pending", processedBy: FieldValue.delete(), processReason: FieldValue.delete(), processedAt: FieldValue.delete() });
     }
+    await syncReportTarget(U.practice);
     // 운영자가 "콘텐츠만 숨기기"로 숨긴 채팅은 원문을 되돌린다.
     for (const id of PRACTICE_CHATS) {
       const hidden = db().collection("hiddenComments").doc(id);

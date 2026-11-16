@@ -2,10 +2,10 @@
 import type { ApiRes } from "@nabi/shared";
 import { SEED_KIND_LABEL } from "@nabi/shared/seed.ts";
 import { settlementApi } from "@nabi/shared/settlement.ts";
-import { moderationApi } from "@nabi/shared/moderation.ts";
-import { useCallback, useEffect, useState } from "react";
+import { moderationApi, USER_FILTERS } from "@nabi/shared/moderation.ts";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { fail } from "@/features/admin/adminUi";
+import { AdminTable, fail, MoreButton, PageHead, useUrlState } from "@/features/admin/adminUi";
 import { SanctionForm, useSanctionGuard } from "@/features/admin/SanctionForm";
 import { SanctionList } from "@/features/admin/SanctionList";
 import { AdminGate } from "@/features/admin/AdminGate";
@@ -14,33 +14,101 @@ import { formatTime } from "@/shared/lib/format";
 import { Button, cx, Input } from "@/shared/ui";
 
 type Detail = ApiRes<typeof moderationApi.adminUserDetail>;
+type Row = ApiRes<typeof moderationApi.adminUsers>["items"][number];
+type Filter = (typeof USER_FILTERS)[number];
+
+const FILTER_LABEL: Record<Filter, string> = { sanctioned: "제재 중", held: "정산 보류", reported: "신고 받음", test: "테스트 계정" };
+
+/** 지금 걸려 있는 제재 중 가장 무거운 것 하나. */
+function statusOf(u: Row) {
+  const now = Date.now();
+  if (u.suspended) return "정지";
+  if (u.chatBannedUntil && Date.parse(u.chatBannedUntil) > now) return "채팅 금지";
+  if (u.broadcastBannedUntil && Date.parse(u.broadcastBannedUntil) > now) return "방송 금지";
+  return "일반";
+}
 
 function AdminUsersPageBody() {
-  const [users, setUsers] = useState<ApiRes<typeof moderationApi.adminUsers>["items"] | null>(null);
-  const [q, setQ] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  const url = useUrlState();
+  const urlQ = url.get("q");
+  const filter = url.get("filter") as Filter | "";
+  const selected = url.get("id");
+  const [text, setText] = useState(urlQ);
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [next, setNext] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
+
+  // 입력이 멈추고 0.3초 뒤에 주소의 검색어를 바꾼다.
   useEffect(() => {
-    void apiFetch(moderationApi.adminUsers).then((r) => setUsers(r.items), () => setUsers([]));
-  }, []);
-  const shown = users?.filter((u) => `${u.nickname} ${u.email ?? ""}`.toLowerCase().includes(q.trim().toLowerCase()));
+    if (text === urlQ) return;
+    const t = setTimeout(() => url.set({ q: text.trim() || null }), 300);
+    return () => clearTimeout(t);
+  }, [text, urlQ, url]);
+
+  useEffect(() => {
+    let stale = false;
+    setRows(null);
+    apiFetch(moderationApi.adminUsers, { q: urlQ, filter: filter || undefined }).then(
+      (r) => !stale && (setRows(r.items), setNext(r.next)),
+      () => !stale && (setRows([]), setNext(null)),
+    );
+    return () => {
+      stale = true;
+    };
+  }, [urlQ, filter]);
+
+  async function loadMore() {
+    setMore(true);
+    try {
+      const r = await apiFetch(moderationApi.adminUsers, { q: urlQ, filter: filter || undefined, cursor: next ?? undefined });
+      setRows((p) => [...(p ?? []), ...r.items]);
+      setNext(r.next);
+    } catch (e) {
+      fail(e);
+    } finally {
+      setMore(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-heading-28">회원 관리</h1>
-      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6">
+      <PageHead title="회원 관리" />
+      <div className="grid grid-cols-[minmax(0,560px)_minmax(0,1fr)] items-start gap-6">
         <div className="flex flex-col gap-2">
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="닉네임이나 이메일로 찾기" aria-label="회원 검색" />
-          {shown?.map((u) => (
-            <button key={u.uid} onClick={() => setSelected(u.uid)} className={cx("flex flex-col rounded-lg px-4 py-3 text-left text-body-16", selected === u.uid ? "bg-raised" : "bg-surface hover:bg-hover")}>
-              <span className="flex justify-between">
-                <b>{u.nickname}</b>
-                {u.suspended && <span className="text-danger">정지</span>}
-              </span>
-              <span className="text-caption-12 text-subtle">
-                {u.email ?? "이메일 가림"} · {u.seedKind ? (SEED_KIND_LABEL[u.seedKind] ?? "테스트") : "일반"}
-              </span>
-            </button>
-          ))}
+          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="닉네임 앞부분, 이메일, 회원 ID로 찾기" aria-label="회원 검색" />
+          <div className="flex flex-wrap gap-2" role="group" aria-label="회원 걸러 보기">
+            {(["", ...USER_FILTERS] as const).map((k) => (
+              <button key={k} aria-pressed={filter === k} onClick={() => url.set({ filter: k || null })} className={cx("h-8 rounded-full px-3 text-caption-12", filter === k ? "bg-raised text-text" : "bg-surface text-muted hover:bg-hover")}>
+                {k ? FILTER_LABEL[k] : "전체"}
+              </button>
+            ))}
+          </div>
+          {urlQ && <p className="text-caption-12 text-subtle">검색 중에는 걸러 보기가 적용되지 않아요</p>}
+          {rows === null ? (
+            <p className="text-body-16 text-muted">불러오는 중…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-body-16 text-muted">찾는 회원이 없어요</p>
+          ) : (
+            <AdminTable
+              cols="1.4fr 1.4fr 0.9fr 0.8fr 0.7fr"
+              head={["닉네임", "이메일", "가입일", "상태", "구분"]}
+              rows={rows}
+              rowKey={(u) => u.uid}
+              selected={selected}
+              onSelect={(u) => url.set({ id: u.uid })}
+              cells={(u) => [
+                <>
+                  <b>{u.nickname}</b>
+                  {u.formerNickname && <span className="block text-caption-12 text-subtle">예전 닉네임: {u.formerNickname}</span>}
+                </>,
+                u.email ?? "이메일 가림",
+                u.createdAt ? formatTime(u.createdAt) : "-",
+                statusOf(u),
+                u.seedKind ? (SEED_KIND_LABEL[u.seedKind] ?? "테스트") : "일반",
+              ]}
+            />
+          )}
+          <MoreButton next={next} loading={more} onMore={() => void loadMore()} />
         </div>
         {selected ? <UserDetail key={selected} uid={selected} /> : <p className="text-body-16 text-muted">왼쪽에서 회원을 골라 주세요</p>}
       </div>
@@ -69,12 +137,12 @@ function UserDetail({ uid }: { uid: string }) {
         {u.broadcastBannedUntil && <p className="text-caption-12 text-danger">방송 금지 {formatTime(u.broadcastBannedUntil)}까지</p>}
         {u.suspended && <p className="text-caption-12 text-danger">영구 정지</p>}
       </div>
-      <Extra d={d} onDone={load} />
-      <SanctionForm user={u} onDone={load} />
       <section className="flex flex-col gap-2">
         <h2 className="text-heading-16">제재 이력</h2>
         <SanctionList items={d.sanctions} onDone={load} />
       </section>
+      <SanctionForm user={u} onDone={load} />
+      <Extra d={d} onDone={load} />
     </div>
   );
 }
@@ -140,7 +208,9 @@ function Extra({ d, onDone }: { d: Detail; onDone: () => void }) {
 export default function AdminUsersPage() {
   return (
     <AdminGate>
-      <AdminUsersPageBody />
+      <Suspense>
+        <AdminUsersPageBody />
+      </Suspense>
     </AdminGate>
   );
 }

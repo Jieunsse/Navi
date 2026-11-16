@@ -1,65 +1,86 @@
 "use client";
 import type { ApiRes } from "@nabi/shared";
 import { moderationApi, REPORT_REASONS, REPORT_STATUS_LABEL } from "@nabi/shared/moderation.ts";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { SanctionForm, useSanctionGuard } from "@/features/admin/SanctionForm";
 import { SanctionList } from "@/features/admin/SanctionList";
 import { AdminGate } from "@/features/admin/AdminGate";
+import { AdminTable, fail, MoreButton, PageHead, useUrlState } from "@/features/admin/adminUi";
 import { apiFetch, ApiError } from "@/shared/api/apiFetch";
 import { formatTime } from "@/shared/lib/format";
-import { Button, cx, Input } from "@/shared/ui";
+import { Button, Input, Tabs } from "@/shared/ui";
 
-type Status = keyof typeof REPORT_CHIP;
-const REPORT_CHIP = { pending: "접수", actioned: "조치함", dismissed: "기각" } as const;
-type Groups = ApiRes<typeof moderationApi.adminReports>["items"];
+type Status = "pending" | "actioned" | "dismissed";
+type List = ApiRes<typeof moderationApi.adminReports>;
 type Detail = ApiRes<typeof moderationApi.adminReportDetail>;
 
 function AdminReportsPageBody() {
-  const [groups, setGroups] = useState<Groups | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState<Status | "all">("all");
-  const loadGroups = useCallback(() => apiFetch(moderationApi.adminReports).then((r) => setGroups(r.items), () => setGroups([])), []);
+  const url = useUrlState();
+  const status = (["actioned", "dismissed"] as const).find((k) => k === url.get("status")) ?? "pending";
+  const selected = url.get("id");
+  const [list, setList] = useState<List | null>(null);
+  const [more, setMore] = useState(false);
+  const load = useCallback(() => apiFetch(moderationApi.adminReports, { status }).then(setList, (e) => (fail(e), setList({ items: [], next: null, counts: { pending: 0 } }))), [status]);
   useEffect(() => {
-    void loadGroups();
-  }, [loadGroups]);
+    void load();
+  }, [load]);
+
+  async function loadMore() {
+    if (!list?.next) return;
+    setMore(true);
+    try {
+      const r = await apiFetch(moderationApi.adminReports, { status, cursor: list.next });
+      setList({ ...r, items: [...list.items, ...r.items] });
+    } catch (e) {
+      fail(e);
+    } finally {
+      setMore(false);
+    }
+  }
+  // 처리가 끝나면 방금 처리한 줄 아래 줄을(없으면 맨 위 줄을) 이어서 연다.
+  function resolved(userId: string) {
+    const rest = list?.items.filter((g) => g.userId !== userId) ?? [];
+    const at = list?.items.findIndex((g) => g.userId === userId) ?? -1;
+    if (status === "pending") url.set({ id: (rest[at] ?? rest[0])?.userId ?? null });
+  }
 
   return (
-    <div className="flex flex-col gap-8">
-      <h1 className="text-heading-28">신고 처리</h1>
-      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-6">
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2" role="group" aria-label="신고 상태">
-            {(["all", "pending", "actioned", "dismissed"] as const).map((k) => (
-              <button key={k} aria-pressed={filter === k} onClick={() => setFilter(k)} className={cx("h-8 rounded-full px-3 text-caption-12", filter === k ? "bg-raised text-text" : "bg-surface text-muted hover:bg-hover")}>
-                {k === "all" ? "전체" : REPORT_CHIP[k]}
-              </button>
-            ))}
-          </div>
-          {groups?.length === 0 && <p className="text-body-16 text-muted">신고가 없어요</p>}
-          {groups?.filter((g) => filter === "all" || g.status === filter).map((g) => (
-            <button
-              key={g.userId}
-              onClick={() => setSelected(g.userId)}
-              className={cx("flex flex-col gap-0.5 rounded-lg px-4 py-3 text-left text-body-16", selected === g.userId ? "bg-raised" : "bg-surface hover:bg-hover")}
-            >
-              <span className="flex justify-between">
-                <b>{g.nickname}</b>
-                <span className={g.status === "pending" ? "text-text" : "text-subtle"}>{REPORT_CHIP[g.status]}</span>
-              </span>
-              <span className="text-caption-12 text-subtle">
-                신고 {g.count}건 · {REPORT_REASONS[g.latestReason]} · {formatTime(g.firstAt)}부터
-              </span>
-            </button>
-          ))}
+    <div className="flex flex-col gap-6">
+      <PageHead title="신고 처리" />
+      <Tabs
+        label="신고 상태"
+        value={status}
+        onChange={(v: Status) => url.set({ status: v === "pending" ? null : v, id: null })}
+        items={[
+          { value: "pending", label: `처리 대기${list ? ` ${list.counts.pending}` : ""}` },
+          { value: "actioned", label: "조치함" },
+          { value: "dismissed", label: "기각" },
+        ]}
+      />
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-6">
+        <div className="flex flex-col gap-3">
+          {list?.items.length === 0 && <p className="text-body-16 text-muted">신고가 없어요</p>}
+          {!!list?.items.length && (
+            <AdminTable
+              cols="minmax(0,1.4fr) 48px minmax(0,1.2fr) minmax(0,1fr)"
+              head={["대상", "대기", "최근 사유", "처음 신고"]}
+              rows={list.items}
+              rowKey={(g) => g.userId}
+              selected={selected}
+              onSelect={(g) => url.set({ id: g.userId })}
+              cells={(g) => [<b key="n">{g.nickname}</b>, g.pendingCount, REPORT_REASONS[g.latestReason], g.firstPendingAt ? formatTime(g.firstPendingAt) : "-"]}
+            />
+          )}
+          <MoreButton next={list?.next} loading={more} onMore={loadMore} />
         </div>
-        {selected ? <ReportDetail key={selected} userId={selected} onChanged={loadGroups} /> : <p className="text-body-16 text-muted">왼쪽에서 대상을 골라 주세요</p>}
+        {selected ? <ReportDetail key={selected} userId={selected} onChanged={load} onResolved={() => resolved(selected)} /> : <p className="text-body-16 text-muted">왼쪽에서 대상을 골라 주세요</p>}
       </div>
     </div>
   );
 }
 
-function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => void }) {
+function ReportDetail({ userId, onChanged, onResolved }: { userId: string; onChanged: () => void; onResolved: () => void }) {
   const [d, setD] = useState<Detail | null>(null);
   const [error, setError] = useState("");
   const [reason, setReason] = useState("");
@@ -72,16 +93,17 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
   if (error) return <p className="text-body-16 text-danger">{error}</p>;
   if (!d) return <p className="text-body-16 text-muted">불러오는 중…</p>;
 
-  const done = () => {
+  const done = (resolved?: boolean) => {
     void load();
     onChanged();
+    if (resolved) onResolved();
   };
   async function resolve(body: { action: "hide" | "dismiss"; reportId?: string }) {
     try {
       await apiFetch(moderationApi.adminResolve, { ...body, reason }, { userId });
       toast.success(body.action === "dismiss" ? "기각했어요" : "조치했어요");
       setReason("");
-      done();
+      done(true);
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "잠시 뒤에 다시 시도해 주세요");
     }
@@ -127,7 +149,7 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
           </div>
           <SanctionForm
             user={d.user}
-            onDone={done}
+            onDone={() => done(true)}
             submit={(v) => apiFetch(moderationApi.adminResolve, { action: "sanction", reason: v.reason, sanction: { kind: v.kind, days: v.days } }, { userId })}
           />
         </section>
@@ -136,7 +158,7 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
 
       <section className="flex flex-col gap-2">
         <h2 className="text-heading-16">지난 제재</h2>
-        <SanctionList items={d.sanctions} onDone={done} />
+        <SanctionList items={d.sanctions} onDone={() => done()} />
       </section>
     </div>
   );
@@ -146,7 +168,9 @@ function ReportDetail({ userId, onChanged }: { userId: string; onChanged: () => 
 export default function AdminReportsPage() {
   return (
     <AdminGate>
-      <AdminReportsPageBody />
+      <Suspense>
+        <AdminReportsPageBody />
+      </Suspense>
     </AdminGate>
   );
 }

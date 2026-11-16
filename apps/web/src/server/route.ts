@@ -11,7 +11,8 @@ const fail = (status: number, code: string, message: string) => Response.json({ 
 export function route<C extends Contract>(contract: C, fn: (ctx: Ctx<C>) => Promise<z.input<C["res"]>>) {
   return async (req: Request, ctx: { params: Promise<Record<string, string>> }) => {
     try {
-      const raw = contract.method === "GET" || contract.method === "DELETE" ? {} : await req.json().catch(() => ({}));
+      // GET은 주소의 검색 조건(?status=...)을 입력으로 받는다.
+      const raw = contract.method === "GET" ? Object.fromEntries(new URL(req.url).searchParams) : contract.method === "DELETE" ? {} : await req.json().catch(() => ({}));
       const parsed = contract.req.safeParse(raw);
       if (!parsed.success) return fail(400, "INVALID", parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요");
       const out = await fn({ req, body: parsed.data as z.output<C["req"]>, params: (await ctx?.params) ?? {} });

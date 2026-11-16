@@ -5,23 +5,26 @@ import {
   TEST_ADMIN_SCOPE_MESSAGE,
   SANCTION_LABEL,
   type AdminUser,
+  type USER_FILTERS,
   type resolveSchema,
   type sanctionInputSchema,
 } from "@nabi/shared/moderation.ts";
 import type { z } from "zod";
-import { AggregateField, type Query } from "firebase-admin/firestore";
+import { AggregateField, FieldPath, type Query } from "firebase-admin/firestore";
 import { adminAuth, db, iso, Timestamp } from "../adapters/firebase.ts";
 import type { LiveKitPort } from "../adapters/livekit.ts";
-import { broadcastDuration, inTestAdminScope, kstDayStart, kstMonthStartOf, reportGroupStatus, sanctionEnd, sanctionRefusal, summarize } from "../domain/moderation.ts";
+import { broadcastDuration, inTestAdminScope, kstDayStart, kstMonthStartOf, sanctionEnd, sanctionRefusal, summarize, userSearchKind } from "../domain/moderation.ts";
 import { usageMonth } from "../domain/recording.ts";
 import { badRequest, conflict, forbidden, notFound } from "../errors.ts";
 import { operatorAction, reportResolved } from "../domain/notification.ts";
+import { nicknameKey } from "./account.ts";
 import { requireUser, type UserDoc, type Viewer } from "./auth.ts";
 import { notify, writeNotification } from "./notification.ts";
 import { recordingRef } from "./recording.ts";
 import { holdOpenSettlements } from "./settlement.ts";
-import { reportLabel, toSanctionItem, type ReportDoc, type SanctionDoc, type SummaryDoc } from "./moderation.ts";
+import { reportLabel, reportTargetRef, toSanctionItem, type ReportDoc, type SanctionDoc, type SummaryDoc } from "./moderation.ts";
 
+type UserFilter = (typeof USER_FILTERS)[number];
 type FullUser = UserDoc & SummaryDoc;
 const users = () => db().collection("users");
 const when = (t: Timestamp | null | undefined) => t?.toDate() ?? null;
@@ -55,6 +58,8 @@ function toBrief(uid: string, u: FullUser, v: Viewer): AdminUser {
   };
 }
 
+const REPORT_PAGE = 50;
+type ReportTargetDoc = { pendingCount: number; totalCount: number; latestReason: ReportDoc["reason"]; firstPendingAt: Timestamp | null; lastReportAt: Timestamp; status: ReportDoc["status"] };
 const REPORT_KIND = { chat: "채팅", broadcast: "방송", user: "사용자" } as const;
 
 export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) => Promise<boolean>) {
@@ -195,30 +200,33 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
       return { isTestAdmin: isTest(admin), broadcastsToday, liveNow, donationToday, nabiShareToday, pendingReports, pendingRefunds, pendingAppeals, recordedMsThisMonth, broadcastMsThisMonth };
     },
 
-    /** 신고를 대상 사용자별로 묶는다(4-15). */
-    async reportGroups(admin: Viewer) {
-      const snap = await db().collection("reports").orderBy("createdAt", "desc").limit(500).get();
-      const by = new Map<string, { id: string; r: ReportDoc }[]>();
-      for (const d of snap.docs) {
-        const r = d.data() as ReportDoc;
-        by.set(r.targetUserId, [...(by.get(r.targetUserId) ?? []), { id: d.id, r }]);
+    /** 신고를 대상 사용자별로 보여준다(4-15). reportTargets 요약을 쪽 단위로 읽는다. */
+    async reportGroups(admin: Viewer, input: { status: "pending" | "actioned" | "dismissed"; cursor?: string }) {
+      const base = db().collection("reportTargets").where("status", "==", input.status);
+      let q = (input.status === "pending" ? base.orderBy("pendingCount", "desc").orderBy("firstPendingAt", "asc") : base.orderBy("resolvedAt", "desc")).limit(REPORT_PAGE);
+      if (input.cursor) {
+        const c = await db().collection("reportTargets").doc(input.cursor).get();
+        if (c.exists) q = q.startAfter(c);
       }
-      const ids = [...by.keys()];
-      const docs = ids.length ? await db().getAll(...ids.map((id) => users().doc(id))) : [];
-      return ids.map((uid, i) => {
-        const rows = by.get(uid)!; // 최근 것이 앞
+      const [snap, pending] = await Promise.all([q.get(), db().collection("reportTargets").where("status", "==", "pending").count().get()]);
+      const docs = snap.docs.length ? await db().getAll(...snap.docs.map((d) => users().doc(d.id))) : [];
+      const items = snap.docs.map((d, i) => {
+        const t = d.data() as ReportTargetDoc;
         const u = docs[i]?.data() as FullUser | undefined;
         const masked = isTest(admin) && !inTestAdminScope(u?.seedKind); // 열 수 있어도 실제 사용자 이름은 가린다
         return {
-          userId: uid,
+          userId: d.id,
           nickname: masked ? MASKED_NICKNAME : (u?.nickname ?? "(탈퇴한 사용자)"),
           masked,
-          count: rows.length,
-          latestReason: rows[0]!.r.reason,
-          firstAt: iso(rows[rows.length - 1]!.r.createdAt)!,
-          status: reportGroupStatus(rows.map((x) => x.r)),
+          pendingCount: t.pendingCount,
+          totalCount: t.totalCount,
+          latestReason: t.latestReason,
+          firstPendingAt: iso(t.firstPendingAt),
+          lastReportAt: iso(t.lastReportAt)!,
+          status: t.status,
         };
       });
+      return { items, next: snap.docs.length === REPORT_PAGE ? snap.docs[snap.docs.length - 1]!.id : null, counts: { pending: pending.data().count } };
     },
 
     async reportDetail(admin: Viewer, uid: string) {
@@ -277,14 +285,21 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
       }
 
       const status = input.action === "dismiss" ? "dismissed" : "actioned";
-      const batch = db().batch();
       const now = Timestamp.now();
-      pending.forEach((d) => {
-        batch.update(d.ref, { status, processedBy: admin.uid, processReason: input.reason, processedAt: now });
-        const r = d.data() as ReportDoc;
-        writeNotification(batch, r.reporterId, reportResolved(REPORT_KIND[r.targetType], status === "actioned", d.id));
+      // 처리하는 사이에 들어온 신고를 지우지 않도록, 접수 신고를 다시 읽고 요약을 같은 트랜잭션에서 고친다.
+      const done = await db().runTransaction(async (tx) => {
+        const [fresh, agg] = await Promise.all([tx.get(db().collection("reports").where("targetUserId", "==", uid).where("status", "==", "pending")), tx.get(reportTargetRef(uid))]);
+        fresh.docs.forEach((d) => {
+          tx.update(d.ref, { status, processedBy: admin.uid, processReason: input.reason, processedAt: now });
+          const r = d.data() as ReportDoc;
+          writeNotification(tx, r.reporterId, reportResolved(REPORT_KIND[r.targetType], status === "actioned", d.id));
+        });
+        if (agg.exists) {
+          const left = Math.max(0, (agg.data()!.pendingCount as number) - fresh.size);
+          tx.update(agg.ref, left > 0 ? { pendingCount: left } : { pendingCount: 0, firstPendingAt: null, status, resolvedAt: now });
+        }
+        return fresh.size;
       });
-      await batch.commit();
       await log(admin, {
         action: input.action === "dismiss" ? "신고 기각" : "신고 조치",
         targetType: "user",
@@ -292,15 +307,67 @@ export function adminUseCases(livekit: LiveKitPort, endBroadcast: (id: string) =
         targetNickname: user.nickname,
         targetSeed: !!user.seedKind,
         reason: input.reason,
-        before: `접수 ${pending.length}건`,
+        before: `접수 ${done}건`,
         after: status === "dismissed" ? "기각" : "조치함",
       });
     },
 
-    async users(admin: Viewer) {
-      const snap = await users().orderBy("nickname").limit(300).get();
+    /** 회원 목록. 검색어가 있으면 filter는 무시한다. cursor는 마지막 줄의 문서 ID다. */
+    async users(admin: Viewer, input: { q?: string; filter?: UserFilter; cursor?: string }) {
       // 테스트 운영자에게도 실제 사용자 줄은 빼지 않고 "심사용이 아닌 계정"으로 가려서 보여준다(4-15).
-      return snap.docs.map((d) => toBrief(d.id, d.data() as FullUser, admin));
+      const row = (id: string, d: FullUser, formerNickname?: string) => ({ ...toBrief(id, d, admin), createdAt: iso((d as { createdAt?: Timestamp }).createdAt ?? null), ...(formerNickname && { formerNickname }) });
+      const byIds = async (ids: string[]) => {
+        const docs = ids.length ? await db().getAll(...ids.map((id) => users().doc(id))) : [];
+        return docs.filter((d) => d.exists);
+      };
+      const q = input.q?.trim();
+      if (q) {
+        const kind = userSearchKind(q);
+        if (kind === "email") {
+          const snap = await users().where("email", "==", q).limit(20).get();
+          return { items: snap.docs.map((d) => row(d.id, d.data() as FullUser)), next: null };
+        }
+        if (kind === "id") {
+          const d = await users().doc(q).get();
+          if (d.exists) return { items: [row(d.id, d.data() as FullUser)], next: null };
+        }
+        // 닉네임 문서 ID(소문자 닉네임)의 앞부분 일치. 예전 닉네임(reserved)도 찾는다.
+        const key = nicknameKey(q);
+        const hits = await db().collection("nicknames").orderBy(FieldPath.documentId()).startAt(key).endAt(`${key}\uf8ff`).limit(20).get();
+        const seen = new Map<string, string | undefined>();
+        for (const h of hits.docs) {
+          const x = h.data() as { uid: string; status: string };
+          if (!seen.has(x.uid) || x.status === "active") seen.set(x.uid, x.status === "reserved" ? h.id : undefined);
+        }
+        const found = new Map((await byIds([...seen.keys()])).map((d) => [d.id, d]));
+        return { items: [...seen].flatMap(([uid, former]) => (found.has(uid) ? [row(uid, found.get(uid)!.data() as FullUser, former)] : [])), next: null };
+      }
+
+      const PAGE = 50;
+      if (input.filter === "sanctioned") {
+        // shortcut: 종류별 100명까지만 보여주고 페이지 넘김은 없다. 제재 중인 사람이 수백 명이 되면 제재 문서 기준 페이지로 바꾼다.
+        const now = Timestamp.now();
+        const snaps = await Promise.all([
+          users().where("suspended", "==", true).limit(100).get(),
+          users().where("chatBannedUntil", ">", now).limit(100).get(),
+          users().where("broadcastBannedUntil", ">", now).limit(100).get(),
+        ]);
+        const all = new Map(snaps.flatMap((s) => s.docs).map((d) => [d.id, d]));
+        return { items: [...all.values()].map((d) => row(d.id, d.data() as FullUser)), next: null };
+      }
+      if (input.filter === "reported") {
+        let rq = db().collection("reportTargets").orderBy("lastReportAt", "desc").limit(PAGE);
+        if (input.cursor) rq = rq.startAfter(await db().collection("reportTargets").doc(input.cursor).get());
+        const snap = await rq.get();
+        const found = new Map((await byIds(snap.docs.map((d) => d.id))).map((d) => [d.id, d]));
+        return { items: snap.docs.flatMap((d) => (found.has(d.id) ? [row(d.id, found.get(d.id)!.data() as FullUser)] : [])), next: snap.size === PAGE ? snap.docs[PAGE - 1]!.id : null };
+      }
+      // held는 문서 ID 순, test는 seedKind 순이다(색인을 더 만들지 않으려고). 최신순은 전체 목록만 지킨다.
+      let uq: Query =
+        input.filter === "held" ? users().where("settlementHold", "==", true) : input.filter === "test" ? users().where("seedKind", "!=", null).orderBy("seedKind") : users().orderBy("createdAt", "desc");
+      if (input.cursor) uq = uq.startAfter(await users().doc(input.cursor).get());
+      const snap = await uq.limit(PAGE).get();
+      return { items: snap.docs.map((d) => row(d.id, d.data() as FullUser)), next: snap.size === PAGE ? snap.docs[PAGE - 1]!.id : null };
     },
 
     async userDetail(admin: Viewer, uid: string) {

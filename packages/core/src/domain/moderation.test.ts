@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { broadcastDuration, chatBanEnd, chatBlock, kstDayStart, kstMonthStartOf, reportGroupStatus, sanctionEnd, sanctionRefusal, summarize } from "./moderation.ts";
+import { broadcastDuration, chatBanEnd, chatBlock, kstDayStart, kstMonthStartOf, reportGroupStatus, reportTargetOf, sanctionEnd, sanctionRefusal, summarize } from "./moderation.ts";
 
 const t0 = new Date("2026-11-12T00:00:00Z");
 const day = (n: number) => new Date(t0.getTime() + n * 86_400_000);
@@ -85,4 +85,33 @@ test("방송 시간 합계: 방송 중이면 지금까지, 시작 전이면 0", 
 test("신고 묶음 상태: 접수가 남아 있으면 접수, 아니면 가장 최근 결과", () => {
   assert.equal(reportGroupStatus([{ status: "dismissed" }, { status: "pending" }]), "pending");
   assert.equal(reportGroupStatus([{ status: "dismissed" }, { status: "actioned" }]), "dismissed");
+});
+
+test("신고 대상 요약: 접수 건수, 가장 오래된 접수, 최근 사유를 다시 계산한다", () => {
+  const at = (n: number) => ({ toMillis: () => n });
+  assert.equal(reportTargetOf([]), null);
+  const sum = reportTargetOf([
+    { status: "pending", reason: "spam", createdAt: at(1) },
+    { status: "actioned", reason: "abuse", createdAt: at(2), processedAt: at(5) },
+    { status: "pending", reason: "etc", createdAt: at(3) },
+  ]);
+  assert.deepEqual([sum?.pendingCount, sum?.totalCount, sum?.firstPendingAt?.toMillis(), sum?.lastReportAt.toMillis(), sum?.latestReason, sum?.status, sum?.resolvedAt], [2, 3, 1, 3, "etc", "pending", null]);
+});
+
+test("신고 대상 요약: 접수가 없으면 가장 최근 신고의 결과와 처리 시각을 쓴다", () => {
+  const at = (n: number) => ({ toMillis: () => n });
+  const sum = reportTargetOf([
+    { status: "dismissed", reason: "spam", createdAt: at(1), processedAt: at(4) },
+    { status: "actioned", reason: "abuse", createdAt: at(2), processedAt: at(3) },
+  ]);
+  assert.deepEqual([sum?.pendingCount, sum?.firstPendingAt, sum?.status, sum?.resolvedAt?.toMillis()], [0, null, "actioned", 4]);
+});
+
+test("회원 검색어 종류: 이메일, 회원 ID, 닉네임", async () => {
+  const { userSearchKind } = await import("./moderation.ts");
+  assert.equal(userSearchKind("a@b.com"), "email");
+  assert.equal(userSearchKind("aB3dE5gH7jK9mN1pQ3sT"), "id");
+  assert.equal(userSearchKind("seed-test-broadcaster"), "id");
+  assert.equal(userSearchKind("하린"), "nickname");
+  assert.equal(userSearchKind("hello world"), "nickname");
 });
