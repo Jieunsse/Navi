@@ -749,7 +749,7 @@ packages/core/src/
 
 | 항목 | 결정 | 이유 |
 |---|---|---|
-| API 약속 | `packages/shared/contracts/<영역>.ts`에 API마다 주소, 메서드, 요청 스키마, 응답 스키마를 zod로 적는다 | 화면과 서버가 같은 약속을 import한다. 응답 모양을 바꾸면 프론트에서 바로 타입 오류가 난다 |
+| API 약속 | `packages/shared/src/contracts.ts`와 영역별 파일(`packages/shared/src/<영역>.ts`)에 API마다 주소, 메서드, 요청 스키마, 응답 스키마를 zod로 적는다 | 화면과 서버가 같은 약속을 import한다. 응답 모양을 바꾸면 프론트에서 바로 타입 오류가 난다 |
 | 서버 | `app/api`는 요청을 약속의 스키마로 검사하고, 응답도 약속의 스키마로 거른 뒤 보낸다 | 약속에 없는 값(익명 후원자의 실제 ID 등)이 실수로 브라우저에 나가지 않는다 |
 | 프론트 | `src/shared/api`에 호출 함수 `apiFetch(약속, 입력)` 하나를 둔다. 로그인 토큰 붙이기와 오류 모양 통일을 맡는다. TanStack Query 훅은 FSD의 `entities`나 `features`의 `api` 폴더에 둔다 | 코드 생성 없이 타입이 맞는다 |
 | API 문서 | 약속 목록을 읽어 `zod-openapi`의 `createDocument`로 OpenAPI 3.1 문서를 만드는 스크립트를 둔다. 문서를 보여주는 화면은 구현할 때 정한다 | 심사자와 README가 API를 한눈에 볼 수 있다. 약속과 문서가 어긋나지 않는다. zod 4의 `z.toJSONSchema`는 스키마 하나만 바꿔 줄 뿐 주소와 메서드가 담긴 문서는 만들지 않는다 |
