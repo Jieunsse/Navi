@@ -15,17 +15,31 @@
 | 테스트 로그인 | 로그인 화면 아래쪽 버튼 3개(방송자, 시청자, 운영자). 비밀번호 없이 들어갑니다. [자세히](#테스트-계정과-테스트-로그인) |
 | 기능 확인 방법 | [기능 확인 순서](#기능-확인-방법)를 위에서부터 따라 합니다 |
 | 로컬 실행 방법 | `pnpm install` 뒤 `pnpm livekit`, `pnpm emulators`, `pnpm dev`, `pnpm seed`. [자세히](#로컬에서-실행하기) |
-| 피그마 시안 | [나비 시안 와이어프레임 목차](https://www.figma.com/design/gcj47GzbMmZlBQxZjoLHBp/%EB%82%98%EB%B9%84-%EC%8B%9C%EC%95%88?node-id=108-11417) |
 | 공모 요구사항 근거 | [15 요구사항과 구현 근거](docs/15-requirements-evidence.md). 체크리스트 항목마다 코드 위치, 서버 확인, 테스트, 확인 순서 |
-| 설계, 아키텍처 | [14 설계](docs/14-architecture.md). 서비스 구성도, 코드 구조, 방송 상태, 인증과 인가 |
-| 기획서 | [00 기획 통합 브리핑](docs/00-planning-brief.md) |
-| 운영 정책, 정책서 | [12 운영 정책](docs/12-policy.md) |
-| 수익 구조, BM | [11 수익 구조](docs/11-business-model.md) |
-| 기능 명세, 요구사항 | [13 기능 명세 요약](docs/13-feature-overview.md), 전체는 [07 기능 명세](docs/07-feature-spec.md) |
-| 화면 설계, 디자인 | [08 화면 설계서](docs/08-screen-spec.md), 피그마 시안(위 줄) |
-| 약관 | [09 방송자 이용약관 초안](docs/09-streamer-terms-draft.md), [10 이용약관 초안](docs/10-terms-of-service-draft.md) |
-| 결정의 이유 | [06 결정 기록](docs/06-decisions.md) |
-| 기획 문서 전체 목록 | [문서 색인](docs/README.md). 문서는 모두 [`docs/`](docs) 폴더에 마크다운으로 있습니다 |
+| 문서 전체 | 아래 [문서 지도](#문서-지도). 문서는 모두 [`docs/`](docs) 폴더에 마크다운으로 있습니다 |
+
+## 문서 지도
+
+기획부터 사업, 디자인, 설계, 운영까지 주제마다 그 주제만 모은 문서가 하나씩 있습니다. 그 문서 하나만 읽어도 주제 전체를 알 수 있습니다. 질문별로 찾으려면 [문서 색인](docs/README.md)을 봅니다.
+
+| 분야 | 주제 | 문서 |
+|---|---|---|
+| 기획 | 기획서(무엇을, 왜, 누구를 위해) | [00 기획 통합 브리핑](docs/00-planning-brief.md) |
+| 기획 | 문제 정의, 경쟁 분석, 고객 여정, 가치 제안, 가정 | [01 문제정의](docs/01-problem-definition.md), [02 경쟁 분석](docs/02-competitor-analysis.md), [03 고객 여정 지도](docs/03-customer-journey-map.md), [04 가치 제안](docs/04-value-proposition.md), [05 가정 우선순위](docs/05-assumption-priorities.md) |
+| 사업 | 사업계획서(첫 시장, 손익, 지표, 로드맵) | [16 사업계획 초안](docs/16-business-plan.md) |
+| 사업 | 마케팅과 출시 계획 | [16 사업계획 3장](docs/16-business-plan.md#3-마케팅과-출시-계획) |
+| 사업 | 수익 구조, BM | [11 수익 구조](docs/11-business-model.md) |
+| 사업 | 광고 운영 규칙 | [06 결정 33](<docs/06-decisions.md#결정-33-광고는-개발하지-않고-운영-규칙을-기획으로-정한다>), [11 수익 구조 2장](docs/11-business-model.md#2-수익원-4가지) |
+| 디자인 | 화면 설계, 와이어프레임 | [08 화면 설계서](docs/08-screen-spec.md), [피그마 시안 목차](https://www.figma.com/design/gcj47GzbMmZlBQxZjoLHBp/%EB%82%98%EB%B9%84-%EC%8B%9C%EC%95%88?node-id=108-11417) |
+| 설계 | 아키텍처, 코드 구조, 인증과 인가 | [14 설계](docs/14-architecture.md) |
+| 설계 | 기능 명세, 요구사항 | [13 기능 명세 요약](docs/13-feature-overview.md), 전체는 [07 기능 명세](docs/07-feature-spec.md) |
+| 설계 | 공모 요구사항 대조 | [15 요구사항과 구현 근거](docs/15-requirements-evidence.md) |
+| 설계 | 결정의 이유(결정 33개) | [06 결정 기록](docs/06-decisions.md) |
+| 운영 | 운영 정책, 정책서 | [12 운영 정책](docs/12-policy.md) |
+| 운영 | 약관 | [09 방송자 이용약관 초안](docs/09-streamer-terms-draft.md), [10 이용약관 초안](docs/10-terms-of-service-draft.md) |
+
+- 두 문서가 서로 다르면 기능 동작은 [07 기능 명세](docs/07-feature-spec.md), 결정의 이유는 [06 결정 기록](docs/06-decisions.md), 화면 모양은 피그마 시안을 따릅니다.
+- 화면 묶음별 피그마 링크는 [08 화면 설계서](docs/08-screen-spec.md) 2장에 있습니다.
 
 ## 서비스 주소
 
@@ -440,22 +454,3 @@ cd apps/web && pnpm exec eslint .
 - 각 라이브러리의 라이선스는 해당 저장소를 따릅니다.
 - 개발에는 AI 개발 도구(Claude Code)를 썼습니다.
 - [`reference/`](reference) 폴더의 치지직 화면 캡처는 경쟁 분석에만 썼습니다.
-
-## 기획 문서
-
-기획, 수익 구조(BM), 운영 정책, 기능 명세, 화면 설계는 모두 [`docs/`](docs) 폴더에 마크다운으로 있습니다. 전체 목록과 질문별 위치는 [문서 색인](docs/README.md)에 있습니다.
-
-주제마다 그 주제만 모은 문서가 하나씩 있습니다. 그 문서 하나만 읽어도 주제 전체를 알 수 있습니다.
-
-| 주제 | 문서 |
-|---|---|
-| 기획, 기획서 | [00 기획 통합 브리핑](docs/00-planning-brief.md) |
-| 수익 구조, BM, 비즈니스 모델 | [11 수익 구조](docs/11-business-model.md) |
-| 운영 정책, 정책서 | [12 운영 정책](docs/12-policy.md) |
-| 기능 명세, 요구사항 | [13 기능 명세 요약](docs/13-feature-overview.md). 전체 명세는 [07 기능 명세](docs/07-feature-spec.md) |
-| 화면 설계, 와이어프레임 | [08 화면 설계서](docs/08-screen-spec.md) |
-| 약관 | [09 방송자 이용약관 초안](docs/09-streamer-terms-draft.md), [10 이용약관 초안](docs/10-terms-of-service-draft.md) |
-| 결정의 이유 | [06 결정 기록](docs/06-decisions.md) |
-
-- **피그마 시안:** [나비 시안 와이어프레임 목차](https://www.figma.com/design/gcj47GzbMmZlBQxZjoLHBp/%EB%82%98%EB%B9%84-%EC%8B%9C%EC%95%88?node-id=108-11417)에서 전체 화면을 볼 수 있습니다. 화면 묶음별 링크는 [08 화면 설계서](docs/08-screen-spec.md) 2장에 있습니다.
-- **참고 화면:** [`reference/`](reference) 폴더의 이미지는 경쟁 분석(01, 02)을 위해 모은 치지직 화면 캡처입니다. 화면 구성과 기능 범위를 비교하는 데만 썼고, 그림과 문구는 나비에 가져오지 않았습니다.
