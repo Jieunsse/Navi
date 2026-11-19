@@ -29,7 +29,7 @@
 | 사업 | 사업계획서(첫 시장, 손익, 지표, 로드맵) | [16 사업계획 초안](docs/16-business-plan.md) |
 | 사업 | 마케팅과 출시 계획 | [16 사업계획 3장](docs/16-business-plan.md#3-마케팅과-출시-계획) |
 | 사업 | 수익 구조, BM | [11 수익 구조](docs/11-business-model.md) |
-| 사업 | 광고 운영 규칙 | [06 결정 33](<docs/06-decisions.md#결정-33-광고는-개발하지-않고-운영-규칙을-기획으로-정한다>), [11 수익 구조 2장](docs/11-business-model.md#2-수익원-4가지) |
+| 사업 | 광고 운영 규칙 | [06 결정 33](docs/06-decisions.md#결정-33-광고는-개발하지-않고-운영-규칙을-기획으로-정한다), [11 수익 구조 2장](docs/11-business-model.md#2-수익원-4가지) |
 | 디자인 | 화면 설계, 와이어프레임 | [08 화면 설계서](docs/08-screen-spec.md), [피그마 시안 목차](https://www.figma.com/design/gcj47GzbMmZlBQxZjoLHBp/%EB%82%98%EB%B9%84-%EC%8B%9C%EC%95%88?node-id=108-11417) |
 | 설계 | 아키텍처, 코드 구조, 인증과 인가 | [14 설계](docs/14-architecture.md) |
 | 설계 | 기능 명세, 요구사항 | [13 기능 명세 요약](docs/13-feature-overview.md), 전체는 [07 기능 명세](docs/07-feature-spec.md) |
