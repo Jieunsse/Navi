@@ -37,6 +37,12 @@ function AdminUsersPageBody() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [more, setMore] = useState(false);
+  // 검색어나 필터가 바뀌면 그리는 중에 목록을 '불러오는 중'으로 되돌린다(effect 안 setState 대신).
+  const [loadedFor, setLoadedFor] = useState(`${urlQ}|${filter}`);
+  if (loadedFor !== `${urlQ}|${filter}`) {
+    setLoadedFor(`${urlQ}|${filter}`);
+    setRows(null);
+  }
 
   // 입력이 멈추고 0.3초 뒤에 주소의 검색어를 바꾼다.
   useEffect(() => {
@@ -47,7 +53,6 @@ function AdminUsersPageBody() {
 
   useEffect(() => {
     let stale = false;
-    setRows(null);
     apiFetch(moderationApi.adminUsers, { q: urlQ, filter: filter || undefined }).then(
       (r) => !stale && (setRows(r.items), setNext(r.next)),
       () => !stale && (setRows([]), setNext(null)),
