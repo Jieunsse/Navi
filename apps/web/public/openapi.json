@@ -280,6 +280,20 @@
                   "withCamera": {
                     "default": false,
                     "type": "boolean"
+                  },
+                  "category": {
+                    "default": "잡담",
+                    "type": "string",
+                    "enum": [
+                      "잡담",
+                      "게임",
+                      "공부",
+                      "음악",
+                      "요리",
+                      "그림",
+                      "운동",
+                      "여행"
+                    ]
                   }
                 },
                 "required": [
@@ -354,6 +368,22 @@
                       "enum": [
                         "screen",
                         "camera"
+                      ]
+                    },
+                    "viewerCount": {
+                      "type": "number"
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": [
+                        "잡담",
+                        "게임",
+                        "공부",
+                        "음악",
+                        "요리",
+                        "그림",
+                        "운동",
+                        "여행"
                       ]
                     },
                     "status": {
@@ -545,6 +575,22 @@
                             "enum": [
                               "screen",
                               "camera"
+                            ]
+                          },
+                          "viewerCount": {
+                            "type": "number"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "잡담",
+                              "게임",
+                              "공부",
+                              "음악",
+                              "요리",
+                              "그림",
+                              "운동",
+                              "여행"
                             ]
                           },
                           "status": {
@@ -1012,6 +1058,14 @@
                       "default": false,
                       "type": "boolean"
                     },
+                    "edited": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "default": false,
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string"
                     },
@@ -1046,6 +1100,278 @@
                     "authorNickname",
                     "content",
                     "hidden",
+                    "edited",
+                    "deleted",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/broadcasts/{id}/chat/{messageId}": {
+      "patch": {
+        "operationId": "editChat",
+        "tags": [
+          "chat"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "content"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messageId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "chat",
+                        "donation",
+                        "mission"
+                      ]
+                    },
+                    "authorId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "authorNickname": {
+                      "type": "string"
+                    },
+                    "authorGrade": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "isHost": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "content": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "hidden": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "edited": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "missionContent": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "missionStatus": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "deadlineAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "messageId",
+                    "kind",
+                    "authorNickname",
+                    "content",
+                    "hidden",
+                    "edited",
+                    "deleted",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteChat",
+        "tags": [
+          "chat"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messageId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "chat",
+                        "donation",
+                        "mission"
+                      ]
+                    },
+                    "authorId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "authorNickname": {
+                      "type": "string"
+                    },
+                    "authorGrade": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "isHost": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "content": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "hidden": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "edited": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "deleted": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "missionContent": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "missionStatus": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "deadlineAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "messageId",
+                    "kind",
+                    "authorNickname",
+                    "content",
+                    "hidden",
+                    "edited",
+                    "deleted",
                     "createdAt"
                   ],
                   "additionalProperties": false
@@ -3412,7 +3738,10 @@
                           "masked": {
                             "type": "boolean"
                           },
-                          "count": {
+                          "pendingCount": {
+                            "type": "number"
+                          },
+                          "totalCount": {
                             "type": "number"
                           },
                           "latestReason": {
@@ -3426,7 +3755,13 @@
                               "other"
                             ]
                           },
-                          "firstAt": {
+                          "firstPendingAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lastReportAt": {
                             "type": "string"
                           },
                           "status": {
@@ -3442,17 +3777,39 @@
                           "userId",
                           "nickname",
                           "masked",
-                          "count",
+                          "pendingCount",
+                          "totalCount",
                           "latestReason",
-                          "firstAt",
+                          "firstPendingAt",
+                          "lastReportAt",
                           "status"
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "pending": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "pending"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "next",
+                    "counts"
                   ],
                   "additionalProperties": false
                 }
@@ -3874,6 +4231,15 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "createdAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "formerNickname": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -3886,14 +4252,22 @@
                           "masked",
                           "suspended",
                           "chatBannedUntil",
-                          "broadcastBannedUntil"
+                          "broadcastBannedUntil",
+                          "createdAt"
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "next"
                   ],
                   "additionalProperties": false
                 }
@@ -4945,6 +5319,22 @@
                                 "enum": [
                                   "screen",
                                   "camera"
+                                ]
+                              },
+                              "viewerCount": {
+                                "type": "number"
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "잡담",
+                                  "게임",
+                                  "공부",
+                                  "음악",
+                                  "요리",
+                                  "그림",
+                                  "운동",
+                                  "여행"
                                 ]
                               },
                               "status": {
@@ -6753,6 +7143,12 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "viewerCount": {
+                            "type": "number"
+                          },
+                          "pendingReports": {
+                            "type": "number"
                           }
                         },
                         "required": [
@@ -6764,14 +7160,36 @@
                           "replayPublic",
                           "createdAt",
                           "startedAt",
-                          "endedAt"
+                          "endedAt",
+                          "viewerCount",
+                          "pendingReports"
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "next": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "live": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "live"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
-                    "items"
+                    "items",
+                    "next",
+                    "counts"
                   ],
                   "additionalProperties": false
                 }

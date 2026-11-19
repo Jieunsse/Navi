@@ -10,7 +10,7 @@ import { ApiError, apiFetch } from "@/shared/api/apiFetch";
 import { firestore } from "@/shared/lib/firebase";
 import { loginHref, useSession } from "@/entities/session/session";
 import { UserSheet } from "@/features/moderation/UserSheet";
-import { Button, cx, GiftIcon, IconButton, SendHorizontalIcon } from "@/shared/ui";
+import { Button, cx, GiftIcon, IconButton, PencilIcon, SendHorizontalIcon, Trash2Icon, XIcon } from "@/shared/ui";
 
 type Props = {
   broadcastId: string;
@@ -74,6 +74,7 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
   const [sentBlocked, setBlocked] = useState<string | null>(null); // 채팅 금지, 활동 제한이면 서버가 준 안내
   const blocked = sentBlocked ?? blockedReason ?? null;
   const [picked, setPicked] = useState<ChatItem | null>(null);
+  const [editing, setEditing] = useState<ChatItem | null>(null); // 고치는 중인 내 채팅
   const textRef = useRef(""); // 보내는 동안 새로 친 글자를 지우지 않으려고 최신 값을 따로 들고 있다
   const pending = useRef<{ id: string; content: string } | null>(null); // 네트워크 실패 뒤 같은 번호로 다시 보내려고 기억한다
   const listRef = useRef<HTMLDivElement>(null);
@@ -165,11 +166,44 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
 
   const toLogin = () => router.push(loginHref(`/live/${broadcastId}`));
 
+  const startEdit = (i: ChatItem) => {
+    setEditing(i);
+    change(i.content);
+  };
+  const cancelEdit = () => {
+    setEditing(null);
+    change("");
+  };
+
+  async function remove(i: ChatItem) {
+    if (!confirm("이 채팅을 지울까요? 되돌릴 수 없어요.")) return;
+    setError(null);
+    try {
+      add([await apiFetch(chatApi.deleteChat, undefined, { id: broadcastId, messageId: i.messageId })]);
+      if (editing?.messageId === i.messageId) cancelEdit();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "잠시 뒤에 다시 시도해 주세요");
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!me) return toLogin();
     const content = text.trim();
     if (!content || sending) return;
+    if (editing) {
+      setSending(true);
+      setError(null);
+      try {
+        add([await apiFetch(chatApi.editChat, { content }, { id: broadcastId, messageId: editing.messageId })]);
+        cancelEdit();
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "잠시 뒤에 다시 시도해 주세요");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
     if (pending.current?.content !== content) pending.current = { id: crypto.randomUUID(), content };
     setSending(true);
     setError(null);
@@ -209,7 +243,15 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
       >
         {sorted.length === 0 && <p className="m-auto text-body-16 text-subtle">아직 채팅이 없어요</p>}
         {sorted.map((i) => (
-          <Row key={keyOf(i)} item={i} ownerId={ownerId} mine={!!me && i.authorId === me.uid} onPick={() => (me ? setPicked(i) : toLogin())} />
+          <Row
+            key={keyOf(i)}
+            item={i}
+            ownerId={ownerId}
+            mine={!!me && i.authorId === me.uid}
+            onPick={() => (me ? setPicked(i) : toLogin())}
+            onEdit={ended || blocked ? undefined : () => startEdit(i)}
+            onDelete={ended ? undefined : () => void remove(i)}
+          />
         ))}
       </div>
 
@@ -218,6 +260,14 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
           <p className="py-2 text-center text-body-16 text-subtle">방송이 끝나 채팅을 쓸 수 없어요</p>
         ) : (
           <>
+            {editing && (
+              <div className="mb-2 flex items-center justify-between rounded-sm bg-raised px-3 py-1 text-caption-12 text-muted">
+                <span>채팅 수정 중</span>
+                <IconButton label="수정 취소" className="size-6" onClick={cancelEdit}>
+                  <XIcon size={14} />
+                </IconButton>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {onDonate && (
                 <IconButton label="후원하기" onClick={onDonate} disabled={!!donateBlockedReason} title={donateBlockedReason}>
@@ -242,7 +292,7 @@ export function ChatPanel({ broadcastId, ownerId, status, room, onDonate, donate
                 </Button>
               )}
               {me && (
-                <IconButton label="보내기" type="submit" disabled={sending || !!blocked || !text.trim()}>
+                <IconButton label={editing ? "수정 저장" : "보내기"} type="submit" disabled={sending || !!blocked || !text.trim()}>
                   <SendHorizontalIcon size={20} />
                 </IconButton>
               )}
@@ -275,7 +325,9 @@ function GradeBadge({ grade }: { grade?: string | null }) {
   return <span className={cx("rounded-full px-2 py-0.5 text-badge-12", tone)}>{GRADE_LABEL[grade as Grade] ?? grade}</span>;
 }
 
-function Row({ item: i, ownerId, mine, onPick }: { item: ChatItem; ownerId: string; mine: boolean; onPick: () => void }) {
+type RowProps = { item: ChatItem; ownerId: string; mine: boolean; onPick: () => void; onEdit?: () => void; onDelete?: () => void };
+
+function Row({ item: i, ownerId, mine, onPick, onEdit, onDelete }: RowProps) {
   const host = i.isHost || (!!i.authorId && i.authorId === ownerId);
   const style = { color: nickColor(i.authorId || i.authorNickname) };
   const name = mine ? (
@@ -309,15 +361,32 @@ function Row({ item: i, ownerId, mine, onPick }: { item: ChatItem; ownerId: stri
   }
   return (
     // 한 줄에 [표시] 닉네임 내용을 이어 쓰고, 길면 다음 줄로 넘긴다
-    <p className="rounded-sm px-2 py-1 text-body-16 break-words hover:bg-[var(--color-state-hover)]">
+    <p className="group rounded-sm px-2 py-1 text-body-16 break-words hover:bg-[var(--color-state-hover)]">
       {host && <span className="mr-1 rounded-xs bg-raised px-1 align-middle text-badge-12 text-muted">방송자</span>}
       <span className="mr-1 align-middle empty:hidden">
         <GradeBadge grade={i.authorGrade} />
       </span>
       {name}
-      <span className="ml-2">{i.hidden ? <Hidden /> : i.content}</span>
+      <span className="ml-2">{i.deleted ? <Deleted /> : i.hidden ? <Hidden /> : i.content}</span>
+      {i.edited && !i.deleted && <span className="ml-1 text-caption-12 text-subtle">(수정됨)</span>}
+      {mine && !i.deleted && (onEdit || onDelete) && (
+        // 마우스가 있으면 올렸을 때만, 터치 화면이면 늘 보인다
+        <span className="ml-1 inline-flex align-middle opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+          {onEdit && (
+            <IconButton label="채팅 수정" className="size-6" onClick={onEdit}>
+              <PencilIcon size={14} />
+            </IconButton>
+          )}
+          {onDelete && (
+            <IconButton label="채팅 삭제" className="size-6" onClick={onDelete}>
+              <Trash2Icon size={14} />
+            </IconButton>
+          )}
+        </span>
+      )}
     </p>
   );
 }
 
 const Hidden = () => <span className="text-body-16 italic text-subtle">부적절한 표현이 감지되어 숨긴 채팅이에요</span>;
+const Deleted = () => <span className="text-body-16 italic text-subtle">삭제된 채팅이에요</span>;

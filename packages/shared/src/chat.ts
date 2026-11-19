@@ -17,6 +17,8 @@ export const chatItemSchema = z.object({
   isHost: z.boolean().nullish(),
   content: z.string().default(""), // 숨긴 채팅은 비어 있다
   hidden: z.boolean().default(false),
+  edited: z.boolean().default(false), // 작성자가 고친 채팅
+  deleted: z.boolean().default(false), // 작성자가 지운 채팅. 내용은 비어 있다
   createdAt: z.string(), // ISO
   amount: z.number().nullish(),
   missionContent: z.string().nullish(),
@@ -30,6 +32,8 @@ export const chatSendSchema = z.object({
   content: z.string().trim().min(1, "채팅을 입력해 주세요").max(CHAT_MAX, `채팅은 ${CHAT_MAX}자까지 쓸 수 있어요`),
 });
 
+export const chatEditSchema = chatSendSchema.pick({ content: true });
+
 const c = <Req extends z.ZodType, Res extends z.ZodType>(method: Contract["method"], path: string, req: Req, res: Res) =>
   ({ method, path, req, res }) satisfies Contract<Req, Res>;
 
@@ -39,4 +43,8 @@ export const chatApi = {
   /** 사용자 시트용: 시드 샘플 계정이면 화면에 "예시"를 붙인다(4-18) */
   authorExample: c("GET", "/api/broadcasts/:id/authors/:userId/example", z.object({}), z.object({ example: z.boolean() })),
   sendChat: c("POST", "/api/broadcasts/:id/chat", chatSendSchema, chatItemSchema),
+  /** 내 채팅 고치기. 서버가 작성자 본인인지 확인한다 */
+  editChat: c("PATCH", "/api/broadcasts/:id/chat/:messageId", chatEditSchema, chatItemSchema),
+  /** 내 채팅 지우기. 서버가 작성자 본인인지 확인한다 */
+  deleteChat: c("DELETE", "/api/broadcasts/:id/chat/:messageId", z.object({}), chatItemSchema),
 } as const;

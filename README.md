@@ -128,11 +128,14 @@
 
 **5. 채팅**
 1. 로그아웃한 상태에서 채팅을 읽을 수 있고, 쓰려고 하면 로그인 화면으로 갑니다.
-2. 로그인하고 채팅을 쓰면 다른 기기에 새로고침 없이 보입니다. 채팅에는 수정·삭제 메뉴가 없습니다.
+2. 로그인하고 채팅을 쓰면 다른 기기에 새로고침 없이 보입니다.
 3. 1초 안에 두 번 보내면 두 번째는 "조금 천천히 보내 주세요"로 거절됩니다.
 4. 금칙어가 들어간 채팅은 모든 기기에서 "부적절한 표현이 감지되어 숨긴 채팅이에요"로 보입니다.
 5. 방송이 끝나면 입력 칸이 막히고, 서버에 직접 보내도 거절됩니다.
 6. 방송 중에 새로고침하거나 늦게 들어와도 최근 채팅 50개가 보입니다.
+7. 내 채팅에 마우스를 올리면(휴대폰은 늘) 연필과 휴지통 버튼이 보입니다. 연필을 누르면 입력 칸이 "채팅 수정 중"으로 바뀌고, 저장하면 모든 기기에서 내용이 바뀌고 "(수정됨)"이 붙습니다.
+8. 휴지통을 누르고 확인하면 모든 기기에서 그 줄이 "삭제된 채팅이에요"로 바뀝니다. 남의 채팅과 후원·미션 메시지에는 두 버튼이 없습니다.
+9. 다른 사람의 로그인 토큰으로 내 채팅을 고치거나 지우도록 서버에 직접 요청하면 403으로 거절됩니다. 아래 "확인용 명령"을 보세요.
 
 **6. 후원과 꿀 (테스트 시청자 + 테스트 방송자)**
 1. 테스트 시청자로 로그인하고, 방송자가 켠 방송에서 "후원하기"를 누릅니다. 꿀이 0이라 아래에서 후원 창이 올라옵니다.
@@ -211,6 +214,16 @@ curl -i -X PATCH -H "authorization: Bearer $TOKEN" -H "content-type: application
   -d '{"title":"바꿔 보기"}' http://localhost:3000/api/broadcasts/방송ID     # 403
 curl -i -X DELETE -H "authorization: Bearer $TOKEN" http://localhost:3000/api/broadcasts/방송ID        # 403
 curl -i -X POST   -H "authorization: Bearer $TOKEN" http://localhost:3000/api/broadcasts/방송ID/end   # 403
+```
+
+**남의 채팅을 서버에 직접 고치거나 지우기 (거절되는지 확인)**
+
+```bash
+TOKEN=$(pnpm -s test-token 방송자)
+# 방송 ID와 채팅 번호는 테스트 시청자가 채팅을 쓴 방송에서 찾습니다(채팅을 보낼 때 응답의 messageId).
+curl -i -X PATCH -H "authorization: Bearer $TOKEN" -H "content-type: application/json" \
+  -d '{"content":"남이 고침"}' http://localhost:3000/api/broadcasts/방송ID/chat/채팅번호   # 403
+curl -i -X DELETE -H "authorization: Bearer $TOKEN" http://localhost:3000/api/broadcasts/방송ID/chat/채팅번호  # 403
 ```
 
 **시청자가 정산이나 환급 승인을 직접 요청하기 (거절되는지 확인)**
