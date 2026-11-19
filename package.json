@@ -15,7 +15,8 @@
     "seed": "pnpm --filter @nabi/core seed",
     "grant-admin": "pnpm --filter @nabi/core grant-admin",
     "test-token": "pnpm --filter @nabi/core test-token",
-    "openapi": "pnpm --filter @nabi/shared openapi"
+    "openapi": "pnpm --filter @nabi/shared openapi",
+    "docs:check": "node scripts/check-doc-links.mjs"
   },
   "devDependencies": {
     "firebase-tools": "^15.0.0"

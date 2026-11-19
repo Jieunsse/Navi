@@ -1,41 +1,55 @@
 # 나비
 
-## 심사자 안내
-
-### 서비스 소개
-
 나비는 누구나 PC 화면이나 휴대폰 카메라로 실시간 방송을 켜고, 시청자가 채팅과 후원으로 참여하는 라이브 방송 서비스입니다.
 후원은 "꿀"이라는 충전식 포인트로 합니다. 방송자는 받은 후원으로 등급이 오르고 월 1회 정산을 받습니다.
 방송은 녹화해서 다시보기로 공개할 수 있고, 운영자는 신고를 처리해 이용자를 제재합니다.
 결제와 송금은 모두 테스트입니다. 실제 돈은 오가지 않습니다.
 
-### 기획 문서
+## 한눈에 보기
 
-기획, 수익 구조(BM), 운영 정책, 기능 명세, 화면 설계는 모두 [`docs/`](docs) 폴더에 마크다운으로 있습니다. 전체 목록과 질문별 위치는 [문서 색인](docs/README.md)에 있습니다.
-
-주제마다 그 주제만 모은 문서가 하나씩 있습니다. 그 문서 하나만 읽어도 주제 전체를 알 수 있습니다.
-
-| 주제 | 문서 |
+| 항목 | 내용 |
 |---|---|
-| 기획, 기획서 | [00 기획 통합 브리핑](docs/00-planning-brief.md) |
-| 수익 구조, BM, 비즈니스 모델 | [11 수익 구조](docs/11-business-model.md) |
-| 운영 정책, 정책서 | [12 운영 정책](docs/12-policy.md) |
-| 기능 명세, 요구사항 | [13 기능 명세 요약](docs/13-feature-overview.md). 전체 명세는 [07 기능 명세](docs/07-feature-spec.md) |
-| 화면 설계, 와이어프레임 | [08 화면 설계서](docs/08-screen-spec.md) |
-| 약관 | [09 방송자 이용약관 초안](docs/09-streamer-terms-draft.md), [10 이용약관 초안](docs/10-terms-of-service-draft.md) |
-| 결정의 이유 | [06 결정 기록](docs/06-decisions.md) |
+| 서비스 주소 | https://navi-pink-kappa.vercel.app |
+| API 문서 | https://navi-pink-kappa.vercel.app/api-docs |
+| 테스트 로그인 | 로그인 화면 아래쪽 버튼 3개(방송자, 시청자, 운영자). 비밀번호 없이 들어갑니다. [자세히](#테스트-계정과-테스트-로그인) |
+| 기능 확인 방법 | [기능 확인 순서](#기능-확인-방법)를 위에서부터 따라 합니다 |
+| 로컬 실행 방법 | `pnpm install` 뒤 `pnpm livekit`, `pnpm emulators`, `pnpm dev`, `pnpm seed`. [자세히](#로컬에서-실행하기) |
+| 공모 요구사항 근거 | [15 요구사항과 구현 근거](docs/15-requirements-evidence.md). 체크리스트 항목마다 코드 위치, 서버 확인, 테스트, 확인 순서 |
+| 문서 전체 | 아래 [문서 지도](#문서-지도). 문서는 모두 [`docs/`](docs) 폴더에 마크다운으로 있습니다 |
 
-- **피그마 시안:** [나비 시안 와이어프레임 목차](https://www.figma.com/design/gcj47GzbMmZlBQxZjoLHBp/%EB%82%98%EB%B9%84-%EC%8B%9C%EC%95%88?node-id=108-11417)에서 전체 화면을 볼 수 있습니다. 화면 묶음별 링크는 [08 화면 설계서](docs/08-screen-spec.md) 2장에 있습니다.
-- **참고 화면:** [`reference/`](reference) 폴더의 이미지는 경쟁 분석(01, 02)을 위해 모은 치지직 화면 캡처입니다. 화면 구성과 기능 범위를 비교하는 데만 썼고, 그림과 문구는 나비에 가져오지 않았습니다.
+## 문서 지도
 
-### 배포 주소
+기획부터 사업, 디자인, 설계, 운영까지 주제마다 그 주제만 모은 문서가 하나씩 있습니다. 그 문서 하나만 읽어도 주제 전체를 알 수 있습니다. 질문별로 찾으려면 [문서 색인](docs/README.md)을 봅니다.
+
+| 분야 | 주제 | 문서 |
+|---|---|---|
+| 기획 | 기획서(무엇을, 왜, 누구를 위해) | [00 기획 통합 브리핑](docs/00-planning-brief.md) |
+| 기획 | 문제 정의, 경쟁 분석, 고객 여정, 가치 제안, 가정 | [01 문제정의](docs/01-problem-definition.md), [02 경쟁 분석](docs/02-competitor-analysis.md), [03 고객 여정 지도](docs/03-customer-journey-map.md), [04 가치 제안](docs/04-value-proposition.md), [05 가정 우선순위](docs/05-assumption-priorities.md) |
+| 사업 | 사업계획서(첫 시장, 손익, 지표, 로드맵) | [16 사업계획 초안](docs/16-business-plan.md) |
+| 사업 | 마케팅과 출시 계획 | [16 사업계획 3장](docs/16-business-plan.md#3-마케팅과-출시-계획) |
+| 사업 | 수익 구조, BM | [11 수익 구조](docs/11-business-model.md) |
+| 사업 | 광고 운영 규칙 | [06 결정 33](docs/06-decisions.md#결정-33-광고는-개발하지-않고-운영-규칙을-기획으로-정한다), [11 수익 구조 2장](docs/11-business-model.md#2-수익원-4가지) |
+| 디자인 | 화면 설계, 와이어프레임 | [08 화면 설계서](docs/08-screen-spec.md), [피그마 시안 목차](https://www.figma.com/design/gcj47GzbMmZlBQxZjoLHBp/%EB%82%98%EB%B9%84-%EC%8B%9C%EC%95%88?node-id=108-11417) |
+| 설계 | 아키텍처, 코드 구조, 인증과 인가 | [14 설계](docs/14-architecture.md) |
+| 설계 | 기능 명세, 요구사항 | [13 기능 명세 요약](docs/13-feature-overview.md), 전체는 [07 기능 명세](docs/07-feature-spec.md) |
+| 설계 | 공모 요구사항 대조 | [15 요구사항과 구현 근거](docs/15-requirements-evidence.md) |
+| 설계 | 결정의 이유(결정 33개) | [06 결정 기록](docs/06-decisions.md) |
+| 운영 | 운영 정책, 정책서 | [12 운영 정책](docs/12-policy.md) |
+| 운영 | 약관 | [09 방송자 이용약관 초안](docs/09-streamer-terms-draft.md), [10 이용약관 초안](docs/10-terms-of-service-draft.md) |
+
+- 두 문서가 서로 다르면 기능 동작은 [07 기능 명세](docs/07-feature-spec.md), 결정의 이유는 [06 결정 기록](docs/06-decisions.md), 화면 모양은 피그마 시안을 따릅니다.
+- 화면 묶음별 피그마 링크는 [08 화면 설계서](docs/08-screen-spec.md) 2장에 있습니다.
+
+## 서비스 주소
 
 - 서비스: https://navi-pink-kappa.vercel.app
-- API 문서: https://navi-pink-kappa.vercel.app/api-docs
+- API 문서: https://navi-pink-kappa.vercel.app/api-docs (같은 내용이 `/openapi.json`에도 있습니다. 로그인 토큰은 `authorization: Bearer <토큰>` 헤더로 보냅니다.)
 
-### 테스트 계정
+## 테스트 계정과 테스트 로그인
 
-로그인 화면 아래쪽 버튼 세 개는 비밀번호 없이 바로 들어갑니다.
+### 버튼 로그인 (비밀번호 없음)
+
+로그인 화면 아래쪽 버튼 세 개를 누르면 비밀번호 없이 바로 들어갑니다.
 
 | 버튼 | 이 계정으로 확인하는 것 |
 |---|---|
@@ -43,7 +57,7 @@
 | 테스트 시청자 | 꿀 충전, 후원, 미션, 신고, 환급 내역 |
 | 테스트 운영자 | 운영자 화면(`/admin`) 전체 |
 
-홈의 "예시" 표시가 붙은 방송은 화면 구성을 보여 주는 예시라서 영상이 재생되지 않습니다. 영상이 나오는 방송은 테스트 방송자로 직접 켜서 확인합니다.
+### 이메일 로그인 계정
 
 버튼에 없는 계정 두 개는 로그인 화면에서 이메일과 비밀번호로 들어갑니다. 심사용 계정이라 비밀번호가 공개되어 있어도 괜찮습니다.
 
@@ -52,14 +66,43 @@
 | 연습용시청자 | `practice@nabi.test` | `nabi-test-2026` | 운영자에게 제재를 받은 사람이 보는 화면, 이의 제기, 꿀 환급 신청 |
 | 정지예시계정 | `suspended@nabi.test` | `nabi-test-2026` | 영구 정지된 계정으로 로그인했을 때 나오는 안내 |
 
-이 밖에 하린방송, 민수게임, 지우, 서연, 하늘달, 도윤, 소라, 보람, 예린, 태양, 지민, 서준은 화면을 채우기 위한 샘플 계정입니다. 운영자 화면의 모든 메뉴가 여러 상태의 줄로 채워지도록 신고, 제재, 이의 제기, 환급, 정산, 충전 기록을 가지고 있습니다. 로그인할 수 없고, 다시보기와 채팅과 후원 내역에 상대방으로 나옵니다.
-샘플 방송과 다시보기 제목에는 "예시"가 붙어 있습니다.
+### 샘플 계정과 예시 방송
 
-홈에는 "예시" 표시가 붙은 방송 중 예시 방송 8개와 준비 중 예시 방송 2개가 있습니다. 직접 송출하는 확인은 방송을 직접 켜는 것부터 시작합니다.
+- 하린방송, 민수게임, 지우, 서연, 하늘달, 도윤, 소라, 보람, 예린, 태양, 지민, 서준은 화면을 채우기 위한 샘플 계정입니다. 로그인할 수 없고, 다시보기와 채팅과 후원 내역에 상대방으로 나옵니다.
+- 샘플 계정은 운영자 화면의 모든 메뉴가 여러 상태의 줄로 채워지도록 신고, 제재, 이의 제기, 환급, 정산, 충전 기록을 가지고 있습니다.
+- 홈에는 제목에 "예시"가 붙은 방송 8개와 준비 중 예시 방송 2개가 있습니다. 화면 구성을 보여 주는 예시라서 영상이 재생되지 않습니다.
+- 영상이 나오는 방송은 테스트 방송자로 직접 켜서 확인합니다.
+
+### 여러 심사자가 함께 쓸 때
+
+- 테스트 계정은 모든 심사자가 함께 씁니다. 앞 심사자가 남긴 충전, 후원, 신고 기록이 다음 심사자에게 보입니다. 두 사람이 동시에 쓰면 서로의 기록이 보일 수 있습니다.
+- 테스트 방송자의 방송은 30분까지만 이어집니다. 송출 화면이 25분에 "5분 뒤에 방송이 끝나요"를 보여주고 30분에 종료합니다.
+- 테스트 계정 로그인 버튼은 같은 IP에서 1시간에 20번까지만 눌러집니다. 넘으면 "잠시 뒤에 다시 시도해 주세요"가 나옵니다.
+- 운영자 화면 "테스트 계정"에서 계정 상태를 되돌릴 수 있습니다. 부분 초기화는 버튼 하나씩 눌러 상태만 되돌리고(테스트 시청자는 꿀 0, 테스트 방송자는 승급 직전, 연습용시청자는 신고 4건·제재 없음·꿀 5,000), 전체 초기화는 테스트 계정 17개와 더미 데이터를 처음부터 다시 만듭니다. 전체 초기화는 테스트 운영자가 10분에 한 번만 할 수 있습니다.
+- 서버에서는 `pnpm seed --reset`으로 같은 전체 초기화를 할 수 있습니다.
+
+### 테스트 로그인을 끄는 날짜
+
+<!-- 심사가 끝나는 날짜를 정해 채웁니다. 그날 배포 환경 변수 ENABLE_TEST_LOGIN과 ENABLE_SETTLEMENT_TEST를 false로 바꿉니다. -->
+심사 기간에는 테스트 계정 버튼 로그인과 월 정산 테스트 실행을 켜 둡니다. 심사가 끝나면 두 기능을 끕니다.
+
+## 기능 확인 방법
+
+### 준비물과 지원 환경
+
+준비물은 맥북 크롬(방송자)과 아이폰(시청자)입니다. 가장 먼저 확인한 조합도 맥북과 아이폰, 크롬 계열입니다.
+
+| 기능 | 지원 환경 |
+|---|---|
+| PC 화면 공유 방송 | 맥과 윈도우의 크롬, 엣지 최신 버전. 탭 소리는 "Chrome 탭" 공유에서만 보장합니다 |
+| 휴대폰 카메라 방송 | 아이폰의 사파리와 크롬, 안드로이드의 크롬 최신 버전 |
+| 시청과 다시보기 | 위 브라우저 전부 |
+
+가장 먼저 확인한 조합은 맥북과 아이폰, 크롬 계열입니다.
 
 ### 기능 확인 순서
 
-아래 순서대로 따라 하면 모든 기능을 볼 수 있습니다. 준비물은 맥북 크롬(방송자), 아이폰(시청자)입니다. 각 번호가 그대로 되면 그 기능은 정상입니다.
+아래 순서대로 따라 하면 모든 기능을 볼 수 있습니다. 각 번호가 그대로 되면 그 기능은 정상입니다.
 
 **1. PC 화면 방송 (테스트 방송자, 맥북 크롬)**
 1. 테스트 방송자로 로그인하고 "방송 만들기"에서 "PC 화면 공유"를 골라 만듭니다.
@@ -92,11 +135,14 @@
 
 **5. 채팅**
 1. 로그아웃한 상태에서 채팅을 읽을 수 있고, 쓰려고 하면 로그인 화면으로 갑니다.
-2. 로그인하고 채팅을 쓰면 다른 기기에 새로고침 없이 보입니다. 채팅에는 수정·삭제 메뉴가 없습니다.
+2. 로그인하고 채팅을 쓰면 다른 기기에 새로고침 없이 보입니다.
 3. 1초 안에 두 번 보내면 두 번째는 "조금 천천히 보내 주세요"로 거절됩니다.
 4. 금칙어가 들어간 채팅은 모든 기기에서 "부적절한 표현이 감지되어 숨긴 채팅이에요"로 보입니다.
 5. 방송이 끝나면 입력 칸이 막히고, 서버에 직접 보내도 거절됩니다.
 6. 방송 중에 새로고침하거나 늦게 들어와도 최근 채팅 50개가 보입니다.
+7. 내 채팅에 마우스를 올리면(휴대폰은 늘) 연필과 휴지통 버튼이 보입니다. 연필을 누르면 입력 칸이 "채팅 수정 중"으로 바뀌고, 저장하면 모든 기기에서 내용이 바뀌고 "(수정됨)"이 붙습니다.
+8. 휴지통을 누르고 확인하면 모든 기기에서 그 줄이 "삭제된 채팅이에요"로 바뀝니다. 남의 채팅과 후원·미션 메시지에는 두 버튼이 없습니다.
+9. 다른 사람의 로그인 토큰으로 내 채팅을 고치거나 지우도록 서버에 직접 요청하면 403으로 거절됩니다. 아래 "확인용 명령"을 보세요.
 
 **6. 후원과 꿀 (테스트 시청자 + 테스트 방송자)**
 1. 테스트 시청자로 로그인하고, 방송자가 켠 방송에서 "후원하기"를 누릅니다. 꿀이 0이라 아래에서 후원 창이 올라옵니다.
@@ -105,7 +151,7 @@
 4. 같은 결제 승인 요청을 다시 보내도 꿀과 합계는 늘지 않습니다. 아래 "확인용 명령"을 보세요.
 5. 익명을 켜고 남은 꿀에서 1,000꿀을 후원하면 채팅과 송출 화면에 "익명"으로 보입니다. 결제창은 뜨지 않습니다.
 6. 후원 버튼을 빠르게 두 번 눌러도 꿀은 한 번만 빠집니다.
-7. 방송 중에 미션 탭에서 제한 시간 5분, 상금 5,000꿀로 미션을 보냅니다. 잔액이 모자라니 "충전하고 후원하기"로 채웁니다. 송출 화면의 미션 목록에 뜨고 시청자 잔액에서 5,000꿀이 묶입니다. 방송자가 거절하면 5,000꿀이 돌아오고, 수락한 뒤 "성공"을 누르면 5,000꿀이 후원 합계에 들어갑니다. 준비 상태의 방송에서는 미션 탭이 눌리지 않습니다.
+7. 방송 중에 미션 탭에서 제한 시간 5분, 상금 5,000꿀로 미션을 보냅니다. 잔액이 모자라니 "충전하고 후원하기"로 채웁니다. 송출 화면의 미션 목록에 뜨고 시청자 잔액에서 5,000꿀이 묶입니다. 방송자가 거절하면 5,000꿀이 돌아오고, 수락한 뒤 "성공"을 누르면 5,000꿀이 후원 합계에 들어갑니다. 준비 상태의 방송에서는 미션 탭에 "방송이 시작되면 미션을 보낼 수 있어요"만 보이고 보낼 수 없습니다.
 8. 수락한 미션을 5분 동안 두면 "실패"가 되고, 응원금 1,000꿀만 후원 합계에 들어가고 4,000꿀은 시청자에게 돌아옵니다. 대기 중인 미션이 있을 때 방송을 종료하면 "취소됨"이 되고 5,000꿀이 모두 돌아옵니다.
 9. 내 꿀 화면에서 쓰지 않은 충전은 취소할 수 있고, 일부라도 쓴 충전은 "취소할 수 없음"으로 보입니다.
 10. 새로 가입한 계정으로 "충전하기"를 누르면 결제창보다 본인인증(목업) 창이 먼저 뜹니다. 생년월일을 만 19세 미만으로 넣으면 "만 19세 이상만 꿀을 충전할 수 있어요"가 나옵니다.
@@ -157,36 +203,9 @@
 6. 테스트 시청자가 서버에 환급 승인을 직접 요청하면 403으로 거절됩니다.
 7. "테스트 계정"에서 연습용시청자를 되돌리면 남은 꿀이 5,000으로 돌아옵니다. 지난 환급 신청 기록은 남습니다.
 
-### 지원 환경
-
-| 기능 | 지원 환경 |
-|---|---|
-| PC 화면 공유 방송 | 맥과 윈도우의 크롬, 엣지 최신 버전. 탭 소리는 "Chrome 탭" 공유에서만 보장합니다 |
-| 휴대폰 카메라 방송 | 아이폰의 사파리와 크롬, 안드로이드의 크롬 최신 버전 |
-| 시청과 다시보기 | 위 브라우저 전부 |
-
-가장 먼저 확인한 조합은 맥북과 아이폰, 크롬 계열입니다.
-
-### 여러 심사자가 함께 쓸 때
-
-- 테스트 계정은 모든 심사자가 함께 씁니다. 앞 심사자가 남긴 충전, 후원, 신고 기록이 다음 심사자에게 보입니다. 두 사람이 동시에 쓰면 서로의 기록이 보일 수 있습니다.
-- 테스트 방송자의 방송은 30분까지만 이어집니다. 송출 화면이 25분에 "5분 뒤에 방송이 끝나요"를 보여주고 30분에 종료합니다.
-- 테스트 계정 로그인 버튼은 같은 IP에서 1시간에 20번까지만 눌러집니다. 넘으면 "잠시 뒤에 다시 시도해 주세요"가 나옵니다.
-- 운영자 화면 "테스트 계정"에서 계정 상태를 되돌릴 수 있습니다. 부분 초기화는 버튼 하나씩 눌러 상태만 되돌리고(테스트 시청자는 꿀 0, 테스트 방송자는 승급 직전, 연습용시청자는 신고 4건·제재 없음·꿀 5,000), 전체 초기화는 테스트 계정 17개와 더미 데이터를 처음부터 다시 만듭니다. 전체 초기화는 테스트 운영자가 10분에 한 번만 할 수 있습니다.
-- 서버에서는 `pnpm seed --reset`으로 같은 전체 초기화를 할 수 있습니다.
-
-### 테스트 계정 로그인을 끄는 날짜
-
-<!-- 심사가 끝나는 날짜를 정해 채웁니다. 그날 배포 환경 변수 ENABLE_TEST_LOGIN과 ENABLE_SETTLEMENT_TEST를 false로 바꿉니다. -->
-심사 기간에는 테스트 계정 버튼 로그인과 월 정산 테스트 실행을 켜 둡니다. 심사가 끝나면 두 기능을 끕니다.
-
-### API 문서
-
-서비스 주소 뒤에 `/api-docs`를 붙이면 모든 API를 목록으로 볼 수 있습니다. 같은 내용이 `/openapi.json`에도 있습니다. 로그인 토큰은 `authorization: Bearer <토큰>` 헤더로 보냅니다.
-
 ### 확인용 명령
 
-서버에 직접 요청하는 확인에는 로그인 토큰이 필요합니다. 아래 명령은 버튼 계정의 토큰을 한 줄로 출력합니다(방송자, 시청자, 운영자 중 하나).
+서버에 직접 요청하는 확인에는 로그인 토큰이 필요합니다. 아래 명령은 버튼 계정의 토큰을 한 줄로 출력합니다(방송자, 시청자, 운영자 중 하나). 웹 서버가 떠 있어야 합니다.
 주소는 배포한 서비스 주소를 `NABI_URL`에 넣어 바꿉니다. 로컬은 기본값 `http://localhost:3000`입니다.
 
 ```bash
@@ -202,6 +221,16 @@ curl -i -X PATCH -H "authorization: Bearer $TOKEN" -H "content-type: application
   -d '{"title":"바꿔 보기"}' http://localhost:3000/api/broadcasts/방송ID     # 403
 curl -i -X DELETE -H "authorization: Bearer $TOKEN" http://localhost:3000/api/broadcasts/방송ID        # 403
 curl -i -X POST   -H "authorization: Bearer $TOKEN" http://localhost:3000/api/broadcasts/방송ID/end   # 403
+```
+
+**남의 채팅을 서버에 직접 고치거나 지우기 (거절되는지 확인)**
+
+```bash
+TOKEN=$(pnpm -s test-token 방송자)
+# 방송 ID와 채팅 번호는 테스트 시청자가 채팅을 쓴 방송에서 찾습니다(채팅을 보낼 때 응답의 messageId).
+curl -i -X PATCH -H "authorization: Bearer $TOKEN" -H "content-type: application/json" \
+  -d '{"content":"남이 고침"}' http://localhost:3000/api/broadcasts/방송ID/chat/채팅번호   # 403
+curl -i -X DELETE -H "authorization: Bearer $TOKEN" http://localhost:3000/api/broadcasts/방송ID/chat/채팅번호  # 403
 ```
 
 **시청자가 정산이나 환급 승인을 직접 요청하기 (거절되는지 확인)**
@@ -252,26 +281,87 @@ pnpm --filter @nabi/core test
 - pnpm 10 (`corepack enable` 하면 `package.json`의 버전이 자동으로 쓰입니다)
 - LiveKit 개발 서버: `brew install livekit`
 - Java (Firebase 에뮬레이터의 Firestore가 씁니다)
+- 선택: Docker(녹화 확인), ffmpeg(다시보기 예시 영상)
 
-### 처음 한 번
+### 1. 설치
 
 ```bash
 pnpm install
 cp apps/web/.env.example apps/web/.env.local   # 이미 있으면 건너뜁니다. 값은 그대로 쓰면 됩니다.
 ```
 
-### 서버 세 개 띄우기
+### 환경변수 예시
+
+`apps/web/.env.example`의 값은 로컬 실행용 예시입니다. 그대로 복사하면 에뮬레이터와 LiveKit 개발 서버로 바로 돌아갑니다. 실제 비밀 값은 레포에 넣지 않고 배포 환경(Vercel)에만 넣습니다.
+
+| 변수 | 로컬 예시 값 | 뜻 |
+|---|---|---|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | `demo-key` | 브라우저용 Firebase 키 |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `demo-nabi.firebaseapp.com` | 브라우저용 Firebase 로그인 주소 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_ID` | `demo-nabi` | Firebase 프로젝트 이름 |
+| `NEXT_PUBLIC_USE_EMULATORS` | `true` | 브라우저가 Firebase 에뮬레이터를 쓸지 정합니다 |
+| `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | 비워 둠 | 서버용 Firebase 관리자 키. 에뮬레이터를 쓰면 비워 둡니다 |
+| `FIRESTORE_EMULATOR_HOST` | `127.0.0.1:8080` | 데이터베이스 에뮬레이터 주소 |
+| `FIREBASE_AUTH_EMULATOR_HOST` | `127.0.0.1:9099` | 로그인 에뮬레이터 주소 |
+| `LIVEKIT_URL`, `NEXT_PUBLIC_LIVEKIT_URL` | `ws://localhost:7880` | LiveKit 서버 주소 |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | `devkey` / `secret` | LiveKit 개발 서버의 기본 키 |
+| `ENABLE_TEST_LOGIN` | `true` | 테스트 계정 버튼 로그인을 켭니다 |
+| `NEXT_PUBLIC_TOSS_CLIENT_KEY` / `TOSS_SECRET_KEY` | `test_ck_...` / `test_sk_...` | 토스페이먼츠 테스트 키. 공식 샘플 저장소의 공개 키라 실제 돈이 나가지 않습니다 |
+| `STORAGE_ENDPOINT` | `http://localhost:9090` | 녹화 저장소 주소(S3 호환) |
+| `STORAGE_EGRESS_ENDPOINT` | `http://storage:9090` | 도커 안의 녹화기가 저장소를 부르는 주소. 배포에서는 비웁니다 |
+| `STORAGE_REGION` / `STORAGE_BUCKET` | `us-east-1` / `nabi-recordings` | 녹화 저장소 지역과 버킷 |
+| `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | `nabi-dev` / `nabi-dev-secret` | 로컬 저장소 키 |
+| `PAYOUT_MODE` | `mock` | 정산 송금 방식. 테스트 송금만 있습니다 |
+| `ENABLE_SETTLEMENT_TEST` | `true` | 운영자 화면의 "월 정산 지금 실행(테스트)" 버튼을 켭니다 |
+| `CRON_SECRET` | 비워 둠 | 월 정산 예약 작업 입구의 비밀 값. 비어 있으면 입구가 닫힙니다 |
+
+### 2. 서버 세 개 띄우기
 
 터미널을 세 개 열고 루트에서 차례로 실행합니다.
 
 ```bash
 pnpm livekit     # 1. LiveKit 개발 서버 (포트 7880)
+```
+
+```bash
 pnpm emulators   # 2. Firebase 에뮬레이터: 로그인 9099, 데이터베이스 8080, 관리 화면 4000
+```
+
+```bash
 pnpm dev         # 3. 웹 서버 (포트 3000) → http://localhost:3000
 ```
 
 `pnpm livekit`은 방송 중 일어나는 일(송출 시작, 방송자 나감)을 `http://localhost:3000/api/webhooks/livekit`으로 알려 줍니다.
 그래서 웹 서버(3)가 떠 있어야 방송이 "방송 중"과 "종료"로 바뀝니다.
+
+`pnpm livekit`은 redis를 씁니다. 도커를 켜지 않고 방송만 확인하려면 `livekit.dev.yaml`의 `redis:` 두 줄을 잠시 주석 처리하세요. 이때는 녹화를 켜도 녹화가 실패로 남고 방송은 계속됩니다. 녹화까지 확인하려면 아래 "녹화 환경 띄우기"를 먼저 합니다.
+
+### 3. 테스트 계정 만들기 (시드)
+
+에뮬레이터가 뜬 뒤에 한 번 실행합니다. 에뮬레이터를 껐다 켜면 데이터가 사라지니 다시 실행해 주세요.
+
+```bash
+pnpm seed                        # 에뮬레이터에 만듭니다
+pnpm seed --reset                # 전체 초기화. 운영자 화면의 "전체 초기화"와 같은 함수입니다
+pnpm seed --target=production    # 배포 환경. Firebase 프로젝트 이름을 한 번 더 입력해야 실행됩니다
+```
+
+테스트 계정 17개(버튼 3개, 연습용시청자, 정지예시계정, 샘플 계정 12개)와 지난 방송, 채팅, 후원, 신고, 제재, 다시보기가 만들어집니다.
+후원, 충전, 신고, 제재는 실제 서버 기능을 거쳐 만들고, 결제만 "시드 결제"로 바꿉니다. 여러 번 돌려도 결과가 같습니다.
+
+- 다시보기 예시 영상 3개는 `ffmpeg`로 만든 테스트 화면입니다. `ffmpeg`가 없으면 영상 없이 녹화 기록만 만들어지고 재생은 되지 않습니다(`brew install ffmpeg`). 올릴 저장소는 `STORAGE_*` 환경 변수의 값입니다.
+- 방송 중 예시 방송 8개와 준비 중 예시 방송 2개를 만듭니다. 영상은 나오지 않습니다.
+- 전체 초기화는 심사자가 만든 처리 중 돈 기록(결제 대기, 환급 대기 등)이 있으면 거절합니다. 시드가 만든 처리 중 기록은 막지 않습니다.
+
+### 4. 로그인해서 확인하기
+
+`http://localhost:3000/login` 아래쪽의 "테스트 방송자 / 시청자 / 운영자로 로그인" 버튼을 누르면 비밀번호 없이 로그인됩니다.
+`apps/web/.env.local`의 `ENABLE_TEST_LOGIN=true`일 때만 동작합니다. 그다음은 [기능 확인 순서](#기능-확인-순서)를 따라 합니다.
+
+```bash
+TOKEN=$(pnpm -s test-token 방송자)
+curl -H "authorization: Bearer $TOKEN" http://localhost:3000/api/me
+```
 
 ### 녹화 환경 띄우기 (도커)
 
@@ -283,7 +373,6 @@ docker compose -f docker-compose.dev.yml up -d   # redis 6379, 저장소 9090, e
 pnpm livekit                                      # redis가 떠 있어야 켜집니다(livekit.dev.yaml이 redis를 씁니다)
 ```
 
-- `pnpm livekit`은 이제 redis를 씁니다. 도커를 켜지 않고 방송만 확인하려면 `livekit.dev.yaml`의 `redis:` 두 줄을 잠시 주석 처리하세요. 이때는 녹화를 켜도 녹화가 실패로 남고 방송은 계속됩니다.
 - egress를 처음 켠 뒤 첫 녹화는 크롬을 처음 띄우느라 실패할 수 있습니다. 실패하면 새 방송으로 다시 해 보세요.
 - 도커 없이 녹화 규칙(상태 바뀜, 3분 제한, 월 50분, 웹훅 처리, 서명 주소)만 확인하려면 에뮬레이터를 켠 채로 `pnpm --filter @nabi/core check-recording`을 실행합니다. 가짜 egress와 가짜 저장소로 돌립니다.
 - 배포는 Cloudflare R2를 씁니다. `STORAGE_ENDPOINT`(`https://<계정ID>.r2.cloudflarestorage.com`), `STORAGE_REGION=auto`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`를 채우고 `STORAGE_EGRESS_ENDPOINT`는 비웁니다.
@@ -307,7 +396,7 @@ docker run --rm -p 3000:3000 --env-file apps/web/.env.production nabi-web   # ht
 - 그 밖의 값(`FIREBASE_*`, `LIVEKIT_*`, `STORAGE_*`, `TOSS_SECRET_KEY`, `CRON_SECRET` 등)은 **실행할 때** `--env-file`이나 `-e`로 넘깁니다. 이미지 안에는 키가 들어가지 않습니다. 변수 이름은 `apps/web/.env.example`을 봅니다.
 - 이 이미지는 웹 서버만 담습니다. LiveKit, Firebase, 저장소(R2)는 밖에 있는 서비스를 환경 변수의 주소로 씁니다.
 
-### API 문서 (OpenAPI)
+### API 문서 갱신 (OpenAPI)
 
 ```bash
 pnpm openapi   # packages/shared의 모든 API 약속 → apps/web/public/openapi.json
@@ -315,45 +404,9 @@ pnpm openapi   # packages/shared의 모든 API 약속 → apps/web/public/openap
 
 웹 서버를 띄우고 `http://localhost:3000/api-docs`를 열면 목록으로 볼 수 있습니다. API 약속(`packages/shared/src`의 `*Api`)을 바꾸면 `pnpm openapi`를 다시 실행해 파일을 갱신합니다. 새 약속 파일을 만들었다면 `packages/shared/scripts/openapi.ts`의 목록에 더합니다.
 
-### 테스트 계정 만들기 (시드)
-
-에뮬레이터가 뜬 뒤에 한 번 실행합니다. 에뮬레이터를 껐다 켜면 데이터가 사라지니 다시 실행해 주세요.
-
-```bash
-pnpm seed                        # 에뮬레이터에 만듭니다
-pnpm seed --reset                # 전체 초기화. 운영자 화면의 "전체 초기화"와 같은 함수입니다
-pnpm seed --target=production    # 배포 환경. Firebase 프로젝트 이름을 한 번 더 입력해야 실행됩니다
-```
-
-테스트 계정 17개(버튼 3개, 연습용시청자, 정지예시계정, 샘플 계정 12개)와 지난 방송, 채팅, 후원, 신고, 제재, 다시보기가 만들어집니다.
-후원, 충전, 신고, 제재는 실제 서버 기능을 거쳐 만들고, 결제만 "시드 결제"로 바꿉니다. 여러 번 돌려도 결과가 같습니다.
-
-- 다시보기 예시 영상 3개는 `ffmpeg`로 만든 테스트 화면입니다. `ffmpeg`가 없으면 영상 없이 녹화 기록만 만들어지고 재생은 되지 않습니다(`brew install ffmpeg`). 올릴 저장소는 `STORAGE_*` 환경 변수의 값입니다.
-- 방송 중 예시 방송 8개와 준비 중 예시 방송 2개를 만듭니다. 영상은 나오지 않습니다.
-- 전체 초기화는 심사자가 만든 처리 중 돈 기록(결제 대기, 환급 대기 등)이 있으면 거절합니다. 시드가 만든 처리 중 기록은 막지 않습니다.
-
 ### 운영자 표시 붙이기
 
 실제 계정을 운영자로 만들려면 가입을 마친 뒤 `pnpm grant-admin 이메일주소`를 실행합니다. 떼려면 `--revoke`, 배포 환경이면 `--target=production`을 붙입니다.
-
-### 테스트 계정 버튼
-
-`http://localhost:3000/login` 아래쪽의 "테스트 방송자 / 시청자 / 운영자로 로그인" 버튼을 누르면 비밀번호 없이 로그인됩니다.
-`apps/web/.env.local`의 `ENABLE_TEST_LOGIN=true`일 때만 동작합니다.
-테스트 방송자의 방송은 30분까지만 이어집니다.
-
-### curl로 API 확인하기 (test-token)
-
-```bash
-pnpm test-token 시청자   # 방송자, 시청자, 운영자 중 하나
-```
-
-그 계정의 로그인 토큰을 한 줄로 출력합니다. 웹 서버가 떠 있어야 합니다.
-
-```bash
-TOKEN=$(pnpm -s test-token 방송자)
-curl -H "authorization: Bearer $TOKEN" http://localhost:3000/api/me
-```
 
 ### 문제 해결
 
@@ -368,7 +421,7 @@ curl -H "authorization: Bearer $TOKEN" http://localhost:3000/api/me
 - 방송이 "준비 중"에서 넘어가지 않으면 `pnpm livekit`과 `pnpm dev`가 모두 떠 있는지 확인합니다.
 - 실제 화면 공유와 카메라는 브라우저가 허용을 물어봅니다. 자동 테스트로는 누를 수 없습니다.
 
-### 확인 명령
+### 검사 명령
 
 ```bash
 pnpm -r typecheck
@@ -376,3 +429,19 @@ pnpm -r test
 pnpm build
 cd apps/web && pnpm exec eslint .
 ```
+
+## 사용한 오픈소스와 출처
+
+| 이름 | 쓴 곳 |
+|---|---|
+| [Next.js](https://github.com/vercel/next.js), [React](https://github.com/facebook/react) | 웹 화면과 서버 API |
+| [LiveKit](https://github.com/livekit/livekit) (`livekit-server`, `livekit-client`, `@livekit/components-react`, `livekit-server-sdk`, egress) | 방송 송출, 시청, 녹화 |
+| [Firebase](https://firebase.google.com) (`firebase`, `firebase-admin`, `firebase-tools`) | 로그인, 데이터베이스(Firestore), 로컬 에뮬레이터 |
+| [토스페이먼츠 SDK](https://docs.tosspayments.com) (`@tosspayments/tosspayments-sdk`) | 꿀 충전 테스트 결제. 테스트 키는 [tosspayments-sample](https://github.com/tosspayments/tosspayments-sample)의 공개 키입니다 |
+| [AWS SDK for JavaScript](https://github.com/aws/aws-sdk-js-v3) (`@aws-sdk/client-s3`) | 녹화 영상 저장(Cloudflare R2)과 재생 주소 |
+| [Zod](https://github.com/colinhacks/zod), [zod-openapi](https://github.com/samchungy/zod-openapi) | API 입력 검사와 API 문서 |
+| [React Hook Form](https://github.com/react-hook-form/react-hook-form), [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | 입력 양식과 화면 스타일 |
+
+- 각 라이브러리의 라이선스는 해당 저장소를 따릅니다.
+- 개발에는 AI 개발 도구(Claude Code)를 썼습니다.
+- [`reference/`](reference) 폴더의 치지직 화면 캡처는 경쟁 분석에만 썼습니다.
