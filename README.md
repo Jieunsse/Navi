@@ -9,6 +9,7 @@
 
 | 항목 | 내용 |
 |---|---|
+| 시연 영상 | [시연 영상 보기](#시연-영상) (PC 방송, 모바일 방송의 송출, 시청, 종료) |
 | 서비스 주소 | https://navi-pink-kappa.vercel.app |
 | API 문서 | https://navi-pink-kappa.vercel.app/api-docs |
 | 테스트 로그인 | 로그인 화면 아래쪽 버튼 3개(방송자, 시청자, 운영자). 비밀번호 없이 들어갑니다. [자세히](#테스트-계정과-테스트-로그인) |
@@ -28,6 +29,14 @@
 
 - 서비스: https://navi-pink-kappa.vercel.app
 - API 문서: https://navi-pink-kappa.vercel.app/api-docs (같은 내용이 `/openapi.json`에도 있습니다. 로그인 토큰은 `authorization: Bearer <토큰>` 헤더로 보냅니다.)
+
+## 시연 영상
+
+<!-- TODO: 영상 주소를 넣습니다. -->
+| 영상 | 보여 주는 것 |
+|---|---|
+| [PC 방송 시연](링크를-넣어-주세요) | 맥북 크롬에서 화면 공유와 탭 소리, 마이크로 방송 시작 → 아이폰에서 시청 → 방송 종료 |
+| [모바일 방송 시연](링크를-넣어-주세요) | 아이폰 카메라와 마이크로 방송 시작 → 맥북에서 시청 → 방송 종료 |
 
 ## 테스트 계정과 테스트 로그인
 
@@ -261,6 +270,31 @@ pnpm install
 cp apps/web/.env.example apps/web/.env.local   # 이미 있으면 건너뜁니다. 값은 그대로 쓰면 됩니다.
 ```
 
+### 환경변수 예시
+
+`apps/web/.env.example`의 값은 로컬 실행용 예시입니다. 그대로 복사하면 에뮬레이터와 LiveKit 개발 서버로 바로 돌아갑니다. 실제 비밀 값은 레포에 넣지 않고 배포 환경(Vercel)에만 넣습니다.
+
+| 변수 | 로컬 예시 값 | 뜻 |
+|---|---|---|
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | `demo-key` | 브라우저용 Firebase 키 |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `demo-nabi.firebaseapp.com` | 브라우저용 Firebase 로그인 주소 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_ID` | `demo-nabi` | Firebase 프로젝트 이름 |
+| `NEXT_PUBLIC_USE_EMULATORS` | `true` | 브라우저가 Firebase 에뮬레이터를 쓸지 정합니다 |
+| `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | 비워 둠 | 서버용 Firebase 관리자 키. 에뮬레이터를 쓰면 비워 둡니다 |
+| `FIRESTORE_EMULATOR_HOST` | `127.0.0.1:8080` | 데이터베이스 에뮬레이터 주소 |
+| `FIREBASE_AUTH_EMULATOR_HOST` | `127.0.0.1:9099` | 로그인 에뮬레이터 주소 |
+| `LIVEKIT_URL`, `NEXT_PUBLIC_LIVEKIT_URL` | `ws://localhost:7880` | LiveKit 서버 주소 |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | `devkey` / `secret` | LiveKit 개발 서버의 기본 키 |
+| `ENABLE_TEST_LOGIN` | `true` | 테스트 계정 버튼 로그인을 켭니다 |
+| `NEXT_PUBLIC_TOSS_CLIENT_KEY` / `TOSS_SECRET_KEY` | `test_ck_...` / `test_sk_...` | 토스페이먼츠 테스트 키. 공식 샘플 저장소의 공개 키라 실제 돈이 나가지 않습니다 |
+| `STORAGE_ENDPOINT` | `http://localhost:9090` | 녹화 저장소 주소(S3 호환) |
+| `STORAGE_EGRESS_ENDPOINT` | `http://storage:9090` | 도커 안의 녹화기가 저장소를 부르는 주소. 배포에서는 비웁니다 |
+| `STORAGE_REGION` / `STORAGE_BUCKET` | `us-east-1` / `nabi-recordings` | 녹화 저장소 지역과 버킷 |
+| `STORAGE_ACCESS_KEY_ID` / `STORAGE_SECRET_ACCESS_KEY` | `nabi-dev` / `nabi-dev-secret` | 로컬 저장소 키 |
+| `PAYOUT_MODE` | `mock` | 정산 송금 방식. 테스트 송금만 있습니다 |
+| `ENABLE_SETTLEMENT_TEST` | `true` | 운영자 화면의 "월 정산 지금 실행(테스트)" 버튼을 켭니다 |
+| `CRON_SECRET` | 비워 둠 | 월 정산 예약 작업 입구의 비밀 값. 비어 있으면 입구가 닫힙니다 |
+
 ### 2. 서버 세 개 띄우기
 
 터미널을 세 개 열고 루트에서 차례로 실행합니다.
@@ -375,6 +409,22 @@ pnpm -r test
 pnpm build
 cd apps/web && pnpm exec eslint .
 ```
+
+## 사용한 오픈소스와 출처
+
+| 이름 | 쓴 곳 |
+|---|---|
+| [Next.js](https://github.com/vercel/next.js), [React](https://github.com/facebook/react) | 웹 화면과 서버 API |
+| [LiveKit](https://github.com/livekit/livekit) (`livekit-server`, `livekit-client`, `@livekit/components-react`, `livekit-server-sdk`, egress) | 방송 송출, 시청, 녹화 |
+| [Firebase](https://firebase.google.com) (`firebase`, `firebase-admin`, `firebase-tools`) | 로그인, 데이터베이스(Firestore), 로컬 에뮬레이터 |
+| [토스페이먼츠 SDK](https://docs.tosspayments.com) (`@tosspayments/tosspayments-sdk`) | 꿀 충전 테스트 결제. 테스트 키는 [tosspayments-sample](https://github.com/tosspayments/tosspayments-sample)의 공개 키입니다 |
+| [AWS SDK for JavaScript](https://github.com/aws/aws-sdk-js-v3) (`@aws-sdk/client-s3`) | 녹화 영상 저장(Cloudflare R2)과 재생 주소 |
+| [Zod](https://github.com/colinhacks/zod), [zod-openapi](https://github.com/samchungy/zod-openapi) | API 입력 검사와 API 문서 |
+| [React Hook Form](https://github.com/react-hook-form/react-hook-form), [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) | 입력 양식과 화면 스타일 |
+
+- 각 라이브러리의 라이선스는 해당 저장소를 따릅니다.
+- 개발에는 AI 개발 도구(Claude Code)를 썼습니다.
+- [`reference/`](reference) 폴더의 치지직 화면 캡처는 경쟁 분석에만 썼습니다.
 
 ## 기획 문서
 
